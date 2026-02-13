@@ -318,24 +318,37 @@ window.updateOrdersList = function () {
     lucide.createIcons();
 }
 
+
 function renderScanner() {
     const content = document.createElement('main');
     content.className = 'p-6 pb-24';
 
     content.innerHTML = `
         <div class="flex flex-col items-center justify-center h-full text-center py-4">
-            <div class="w-64 h-64 bg-secondary rounded-3xl relative flex items-center justify-center mb-6 overflow-hidden shadow-2xl group cursor-pointer" onclick="document.getElementById('manual-input').focus()">
-                <div class="absolute inset-0 border-4 border-primary/50 rounded-3xl animate-pulse"></div>
-                <!-- Mock Camera Feed -->
-                <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400')] opacity-30 bg-cover mix-blend-luminosity"></div>
-                <div class="absolute inset-0 flex flex-col items-center justify-center z-20">
-                    <i data-lucide="scan-line" class="w-12 h-12 text-white/80 animate-bounce mb-2"></i>
-                    <span class="text-white font-bold text-xs bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">Camera Active</span>
+            <div class="w-64 h-64 bg-black rounded-3xl relative flex items-center justify-center mb-6 overflow-hidden shadow-2xl">
+                <!-- Video Feed -->
+                <video id="qr-video" class="w-full h-full object-cover" playsinline muted></video>
+                
+                <!-- Overlay -->
+                <div id="scanner-overlay" class="absolute inset-0 border-4 border-primary/50 rounded-3xl z-10 pointer-events-none hidden">
+                    <div class="absolute inset-x-0 top-1/2 h-0.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-scan"></div>
+                </div>
+
+                <!-- Placeholder / Start Button -->
+                <div id="scanner-placeholder" class="absolute inset-0 flex flex-col items-center justify-center z-20 bg-gray-900 text-white p-4">
+                    <div class="p-3 bg-white/10 rounded-full mb-3">
+                        <i data-lucide="camera" class="w-8 h-8"></i>
+                    </div>
+                    <p class="text-xs font-bold mb-3 max-w-[200px]">Camera access required to scan QR codes</p>
+                    <button onclick="startScanner()" class="bg-primary text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-orange-500/20 active:scale-95 transition-all">
+                        Start Camera
+                    </button>
+                    ${!window.isSecureContext ? '<p class="text-[10px] text-red-400 mt-2 font-bold bg-white/10 px-2 py-1 rounded">HTTPS Required</p>' : ''}
                 </div>
             </div>
             
             <h2 class="text-xl font-[900] text-secondary mb-1">Scan Customer QR</h2>
-            <p class="text-gray-400 text-sm mb-6 px-6">Point camera at the customer's order receipt to verify.</p>
+            <p class="text-gray-400 text-sm mb-6 px-6">Point camera at the customer's order QR code.</p>
             
             <!-- Manual Entry -->
             <div class="w-full bg-white p-4 rounded-2xl shadow-sm border border-gray-100 max-w-sm">
@@ -355,9 +368,52 @@ function renderScanner() {
 
     app.appendChild(content);
 
-    // Auto-focus input for testing ease
-    setTimeout(() => document.getElementById('manual-input')?.focus(), 500);
+    // Stop partial streams if any exist (cleanup)
+    if (window.scannerStream) {
+        window.scannerStream.getTracks().forEach(track => track.stop());
+    }
 }
+
+window.startScanner = async function () {
+    const video = document.getElementById('qr-video');
+    const placeholder = document.getElementById('scanner-placeholder');
+    const overlay = document.getElementById('scanner-overlay');
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Camera API not supported in this browser.");
+        return;
+    }
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" }
+        });
+
+        window.scannerStream = stream;
+        video.srcObject = stream;
+        video.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
+        video.play();
+
+        requestAnimationFrame(() => {
+            placeholder.classList.add('hidden');
+            overlay.classList.remove('hidden');
+            scanFrame(); // Start processing frames (mock for now, or integrated if lib added)
+        });
+
+    } catch (err) {
+        console.error("Camera Error:", err);
+        alert("Camera access denied or error: " + err.message + "\n\nMake sure you are on HTTPS and have allowed camera permissions.");
+    }
+};
+
+window.scanFrame = function () {
+    // This function loop simply keeps the video active. 
+    // Since we don't have a QR library (jsQR) imported, we can't actually decode.
+    // For now, this just proves the camera works.
+    if (window.scannerStream && window.staffState.currentTab === 'scanner') {
+        requestAnimationFrame(scanFrame);
+    }
+};
 
 window.handleValidScan = function (scannedText) {
     const resultContainer = document.getElementById('scan-result');

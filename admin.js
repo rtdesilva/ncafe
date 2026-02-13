@@ -829,8 +829,8 @@ function toggleAvailability(id) {
     const item = menuItems.find(i => i.id === id);
     if (item) {
         item.isAvailable = !item.isAvailable;
-        DataStore.saveMenu(menuItems);
-        renderAdmin();
+        DataStore.saveMenuItem(item);
+        // renderAdmin(); // Listener will trigger render
     }
 }
 
@@ -931,32 +931,21 @@ function saveItem(event) {
 
     if (adminState.modalMode === 'add') {
         // Generate new ID
-        // If there are no items, start at 101. Otherwise find max and add 1.
         const newId = menuItems.length > 0 ? Math.max(...menuItems.map(i => i.id)) + 1 : 101;
         newItem.id = newId;
-        menuItems.push(newItem);
     } else if (adminState.modalMode === 'edit') {
-        const index = menuItems.findIndex(i => i.id === adminState.editingItem.id);
-        if (index !== -1) {
-            newItem.id = adminState.editingItem.id;
-            newItem.isAvailable = adminState.editingItem.isAvailable; // Preserve availability
-            menuItems[index] = newItem;
-        }
+        newItem.id = adminState.editingItem.id;
+        newItem.isAvailable = adminState.editingItem.isAvailable; // Preserve availability
     }
 
-    DataStore.saveMenu(menuItems); // Persist changes
+    DataStore.saveMenuItem(newItem); // Persist single item
     closeModal();
 }
 
 function deleteMenuItem(id) {
     if (confirm('Are you sure you want to delete this item?')) {
-        const menuItems = DataStore.getMenu();
-        const index = menuItems.findIndex(i => i.id === id);
-        if (index !== -1) {
-            menuItems.splice(index, 1);
-            DataStore.saveMenu(menuItems); // Persist changes
-            renderAdmin();
-        }
+        DataStore.deleteMenuItem(id);
+        // renderAdmin(); // Listener will trigger render
     }
 }
 

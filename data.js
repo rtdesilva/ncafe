@@ -109,19 +109,36 @@ const DataStore = {
     getMenu: function () {
         return localMenu.length ? localMenu : DEFAULT_MENU_ITEMS;
     },
-    saveMenu: function (items) {
-        localMenu = items; // Optimistic update
-        window.dispatchEvent(new Event('menu-updated')); // Force UI refresh
-        db.collection('settings').doc('menu').set({ items: items })
+    saveMenuItem: function (item) {
+        db.collection('menuItems').doc(item.id.toString()).set(item)
+            .then(() => console.log('Item saved:', item.name))
             .catch(e => {
-                console.error("Save Menu Error:", e);
+                console.error("Save Error:", e);
                 alert("Database Error: " + e.message);
+            });
+    },
+    deleteMenuItem: function (id) {
+        db.collection('menuItems').doc(id.toString()).delete()
+            .then(() => console.log('Item deleted:', id))
+            .catch(e => alert("Delete Error: " + e.message));
+    },
+    saveMenu: function (items) {
+        // Batch write for migration/reset
+        const batch = db.batch();
+        items.forEach(item => {
+            const ref = db.collection('menuItems').doc(item.id.toString());
+            batch.set(ref, item);
+        });
+        batch.commit()
+            .then(() => console.log("Batch menu update complete"))
+            .catch(e => {
+                console.error("Batch Save Error:", e);
+                alert("Database Error (Batch): " + e.message);
             });
     },
     resetMenuToDefaults: function () {
         console.log("Resetting menu to defaults...");
         this.saveMenu(DEFAULT_MENU_ITEMS);
-        // alert("Menu reset to defaults! Please refresh."); // Removed alert to be less annoying on auto-run
     },
     reset: function () {
         // For testing
@@ -156,16 +173,36 @@ db.collection('orders').onSnapshot((snapshot) => {
 });
 
 // 2. Menu Listener
-db.collection('settings').doc('menu').onSnapshot((doc) => {
-    if (doc.exists) {
-        localMenu = doc.data().items;
+// 2. Menu Listener (Now listens to Collection 'menuItems')
+db.collection('menuItems').onSnapshot((snapshot) => {
+    const items = [];
+    snapshot.forEach((doc) => {
+        items.push(doc.data());
+    });
+
+    // Handle Init / Migration
+    if (items.length === 0) {
+        // Check if we have legacy data in settings/menu
+        db.collection('settings').doc('menu').get().then((doc) => {
+            if (doc.exists && doc.data().items && doc.data().items.length > 0) {
+                console.log("Migrating legacy menu to collection...");
+                DataStore.saveMenu(doc.data().items);
+            } else {
+                // No legacy data, load defaults if first run
+                if (!localStorage.getItem('ncafe_menu_v3_init')) {
+                    console.log("Initializing default values...");
+                    DataStore.saveMenu(DEFAULT_MENU_ITEMS);
+                    localStorage.setItem('ncafe_menu_v3_init', 'true');
+                }
+            }
+        });
     } else {
-        // First run: save defaults
-        localMenu = DEFAULT_MENU_ITEMS;
-        DataStore.saveMenu(DEFAULT_MENU_ITEMS);
+        // Sort by ID to ensure consistent order
+        items.sort((a, b) => a.id - b.id);
+        localMenu = items;
+        window.dispatchEvent(new Event('menu-updated'));
+        window.dispatchEvent(new Event('storage'));
     }
-    window.dispatchEvent(new Event('menu-updated'));
-    window.dispatchEvent(new Event('storage'));
 });
 
 // EXPORT GLOBALS

@@ -463,7 +463,11 @@ function renderReceipt() {
     const div = document.createElement('div');
     div.className = 'min-h-screen bg-primary flex items-center justify-center p-6';
     div.innerHTML = `
-        <div class="bg-white w-full rounded-3xl p-8 shadow-2xl">
+        <div class="bg-white w-full rounded-3xl p-8 shadow-2xl relative">
+            <button onclick="${state.user ? 'viewMyOrders()' : 'goHome()'}" class="absolute top-6 left-6 w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-secondary active:scale-95 transition-all">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </button>
+
             <div class="text-center mb-6">
                 <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i data-lucide="check" class="w-8 h-8 text-green-600"></i>
@@ -499,12 +503,21 @@ function renderReceipt() {
                 </div>
             </div>
             
-            <button onclick="trackOrder()" class="w-full bg-secondary text-white p-4 rounded-xl font-bold mb-2">
-                Track My Order
-            </button>
-            <button onclick="newOrder()" class="w-full bg-gray-100 text-gray-600 p-4 rounded-xl font-bold">
-                Start New Order
-            </button>
+            ${order.status === 'completed' ? `
+                <button onclick="reorder('${order.id}')" class="w-full bg-primary text-white p-4 rounded-xl font-bold mb-2 shadow-lg shadow-orange-500/20 active:scale-95 transition flex items-center justify-center gap-2">
+                    <i data-lucide="refresh-ccw" class="w-5 h-5"></i> Order Again
+                </button>
+                <button onclick="goHome()" class="w-full bg-gray-50 text-gray-500 p-4 rounded-xl font-bold hover:bg-gray-100">
+                    Back to Menu
+                </button>
+            ` : `
+                <button onclick="trackOrder()" class="w-full bg-secondary text-white p-4 rounded-xl font-bold mb-2 shadow-lg shadow-gray-900/20 active:scale-95 transition">
+                    Track My Order
+                </button>
+                <button onclick="newOrder()" class="w-full bg-gray-100 text-gray-600 p-4 rounded-xl font-bold">
+                    Start New Order
+                </button>
+            `}
         </div>
     `;
     app.appendChild(div);
@@ -1673,6 +1686,9 @@ function renderMyOrders() {
                     return dateB - dateA;
                 });
 
+                // Save to state for viewBill lookup
+                state.orders = orders;
+
                 ordersContainer.innerHTML = orders.map(order => {
                     const orderDate = new Date(order.date);
                     const formattedDate = orderDate.toLocaleDateString('en-GB', {
@@ -1745,11 +1761,17 @@ function renderMyOrders() {
                             ` : ''}
 
                             <!-- Reorder Button -->
-                            ${status === 'completed' ? `
-                                <button onclick="reorder('${order.id}')" class="w-full mt-4 bg-gray-100 text-secondary py-3 rounded-xl font-bold text-sm active:scale-95 transition hover:bg-gray-200">
-                                    Order Again
+                            <!-- Actions -->
+                            <div class="flex gap-2 mt-4">
+                                <button onclick="viewBill('${order.id}')" class="flex-1 bg-white border border-gray-200 text-secondary py-3 rounded-xl font-bold text-sm active:scale-95 transition hover:bg-gray-50 flex items-center justify-center gap-2">
+                                    <i data-lucide="receipt" class="w-4 h-4 text-gray-400"></i> View Bill
                                 </button>
-                            ` : ''}
+                                ${status === 'completed' ? `
+                                    <button onclick="reorder('${order.id}')" class="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-sm active:scale-95 transition hover:bg-orange-600 shadow-lg shadow-orange-500/20">
+                                        Order Again
+                                    </button>
+                                ` : ''}
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -1791,6 +1813,16 @@ function renderMyOrders() {
             </div>
         `;
         lucide.createIcons();
+    }
+}
+
+
+function viewBill(orderId) {
+    const order = state.orders.find(o => o.id === orderId);
+    if (order) {
+        state.lastOrder = order;
+        state.view = 'receipt';
+        render();
     }
 }
 
