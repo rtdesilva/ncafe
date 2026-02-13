@@ -1721,19 +1721,18 @@ function renderMyOrders() {
 
                     return `
                         <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition">
-                            <!-- Order Header -->
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <span class="font-bold text-secondary">#${order.id.substring(0, 12)}...</span>
-                                        <span class="${statusClass} text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                                            <i data-lucide="${statusIcon}" class="w-3 h-3"></i>
-                                            ${status.charAt(0).toUpperCase() + status.slice(1)}
-                                        </span>
-                                    </div>
-                                    <span class="text-xs text-gray-400">${formattedDate} • ${formattedTime}</span>
-                                </div>
-                                <span class="text-lg font-bold text-primary">LKR ${order.total}</span>
+                            <!-- Order Header (Mobile Optimized) -->
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-secondary text-sm">#${order.id.substring(0, 8)}...</span>
+                                <span class="text-lg font-bold text-primary whitespace-nowrap">LKR ${order.total}</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-xs text-gray-400 font-medium">${formattedDate} • ${formattedTime}</span>
+                                <span class="${statusClass} text-[10px] px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                                    <i data-lucide="${statusIcon}" class="w-3 h-3"></i>
+                                    ${status.charAt(0).toUpperCase() + status.slice(1)}
+                                </span>
                             </div>
 
                             <!-- Order Items -->
