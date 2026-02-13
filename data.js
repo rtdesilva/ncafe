@@ -216,7 +216,8 @@ window.addEventListener('menu-updated', () => {
 });
 
 // SELF-HEALING / AUTO-RESET
-// This block ensures that if the 'fix_v2' has not been applied, we force reset the data
+// This block is disabled to prevent accidental overwrite of live data.
+/*
 if (!localStorage.getItem('fix_v2_applied')) {
     console.log("Applying Fix V2: Resetting Data...");
     setTimeout(() => {
@@ -225,3 +226,4 @@ if (!localStorage.getItem('fix_v2_applied')) {
         console.log("Fix V2 Applied. Data reset.");
     }, 2000); // Wait a bit for firebase to init
 }
+*/
