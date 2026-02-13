@@ -407,12 +407,45 @@ window.startScanner = async function () {
 };
 
 window.scanFrame = function () {
-    // This function loop simply keeps the video active. 
-    // Since we don't have a QR library (jsQR) imported, we can't actually decode.
-    // For now, this just proves the camera works.
-    if (window.scannerStream && window.staffState.currentTab === 'scanner') {
-        requestAnimationFrame(scanFrame);
+    const video = document.getElementById('qr-video');
+
+    // Stop if tab switched or stream ended
+    if (!video || !window.scannerStream || staffState.currentTab !== 'scanner') return;
+
+    // Check if video is ready
+    if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+        // Create canvas for processing (optimized with willReadFrequently)
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        try {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Check if jsQR is loaded
+            if (typeof jsQR !== 'undefined') {
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+
+                if (code && code.data) {
+                    // Success!
+                    // Check if different from last scan to avoid UI flickering?
+                    // For now just pass it. handleValidScan is idempotent-ish (just updates UI).
+                    handleValidScan(code.data);
+                }
+            }
+        } catch (e) {
+            console.warn("Scan error:", e);
+        }
     }
+
+    // Loop
+    requestAnimationFrame(scanFrame);
 };
 
 window.handleValidScan = function (scannedText) {
