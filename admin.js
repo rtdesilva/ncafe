@@ -756,7 +756,8 @@ function renderModal() {
                         <label class="block text-xs font-bold text-gray-400 mb-1">Product Image</label>
                         
                         <!-- Hidden Input stores the Base64 string or original URL -->
-                        <input type="hidden" name="finalImage" id="encoded-image" value="${item.image || ''}">
+                        <!-- FIX: Do not put item.image in value here to avoid Base64 truncation in DOM -->
+                        <input type="hidden" name="finalImage" id="encoded-image" value="">
                         
                         <div class="flex items-start gap-4">
                             <!-- Preview -->
@@ -920,10 +921,18 @@ function saveItem(event) {
         price: parseInt(formData.get('price')),
         category: formData.get('category'),
         subCategory: formData.get('subCategory'),
-        image: formData.get('finalImage'), // Get processed Base64 or URL
+        // image: formData.get('finalImage'), // OLD logic
         description: formData.get('description'),
         isAvailable: true // Default to true for new items
     };
+
+    // FIX PREVENT DISAPPEARING IMAGES
+    // If no new image was uploaded/pasted (hidden input empty), keep the existing one
+    let newImage = formData.get('finalImage');
+    if (!newImage && adminState.modalMode === 'edit' && adminState.editingItem) {
+        newImage = adminState.editingItem.image;
+    }
+    newItem.image = newImage;
 
     if (!newItem.image) {
         newItem.image = 'https://placehold.co/400x300?text=No+Image'; // Fallback
