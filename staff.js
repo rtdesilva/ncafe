@@ -18,8 +18,27 @@ const staffState = {
     inboxListener: null,
     activeChatListener: null,
     orderFilter: 'active', // NEW: Filter for orders
-    orderSearch: '' // NEW: Search for orders
+    orderSearch: '', // NEW: Search for orders
+    isDarkMode: localStorage.getItem('ncafe_staff_dark_mode') === 'true'
 };
+
+// INITIAL DARK MODE APPLY
+if (staffState.isDarkMode) {
+    document.documentElement.classList.add('dark');
+} else {
+    document.documentElement.classList.remove('dark');
+}
+
+function toggleDarkMode() {
+    staffState.isDarkMode = !staffState.isDarkMode;
+    localStorage.setItem('ncafe_staff_dark_mode', staffState.isDarkMode);
+    if (staffState.isDarkMode) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+    render();
+}
 
 // ==============================================
 // RENDER
@@ -30,15 +49,23 @@ function render() {
 
     // Header (Always Visible)
     const header = document.createElement('header');
-    header.className = 'bg-secondary text-white p-6 sticky top-0 z-20 shadow-lg';
+    header.className = 'bg-secondary dark:bg-dark-surface text-white p-6 sticky top-0 z-20 shadow-lg transition-colors duration-300';
     header.innerHTML = `
         <div class="flex justify-between items-center">
             <div>
                 <h1 class="text-xl font-[900] tracking-tight">Staff Portal</h1>
                 <p class="text-xs text-gray-400 font-bold tracking-widest uppercase">N-Cafe Manager</p>
             </div>
-            <div class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                <i data-lucide="scan-barcode" class="w-5 h-5"></i>
+            <div class="flex items-center gap-3">
+                <!-- Theme Toggle Switch -->
+                <div onclick="toggleDarkMode()" class="w-14 h-8 bg-white/10 rounded-full p-1 cursor-pointer transition-all active:scale-95 group">
+                    <div class="h-6 w-6 rounded-full bg-white dark:bg-primary shadow-sm flex items-center justify-center transition-all ${staffState.isDarkMode ? 'translate-x-6' : 'translate-x-0'}">
+                        <i data-lucide="${staffState.isDarkMode ? 'sun' : 'moon'}" class="w-4 h-4 text-primary dark:text-white"></i>
+                    </div>
+                </div>
+                <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                    <i data-lucide="scan-barcode" class="w-5 h-5"></i>
+                </div>
             </div>
         </div>
     `;

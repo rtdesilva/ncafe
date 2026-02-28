@@ -8,11 +8,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
                         primary: '#FF6B00',
                         secondary: '#111827',
+                        'dark-bg': '#0F172A',
+                        'dark-surface': '#1E293B',
+                        'dark-border': '#334155'
                     }
                 }
             }
@@ -69,8 +73,10 @@
     </style>
 </head>
 
-<body class="bg-gray-50 text-secondary">
-    <div id="app" class="max-w-md mx-auto bg-white min-h-screen relative shadow-2xl"></div>
+<body class="bg-gray-50 dark:bg-dark-bg text-secondary dark:text-gray-100 transition-colors duration-300">
+    <div id="app"
+        class="max-w-md mx-auto bg-white dark:bg-dark-bg min-h-screen relative shadow-2xl transition-colors duration-300">
+    </div>
 
     <script src="data.js"></script>
     <script src="customer.js"></script>

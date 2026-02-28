@@ -11,8 +11,27 @@ let adminState = {
     endDate: new Date().toISOString().split('T')[0],
     orderSearch: '', // Search query for orders
     customerSearch: '', // Search query for customers
-    selectedCustomer: null // For viewing customer order history
+    selectedCustomer: null, // For viewing customer order history
+    isDarkMode: localStorage.getItem('ncafe_admin_dark_mode') === 'true'
 };
+
+// INITIAL DARK MODE APPLY
+if (adminState.isDarkMode) {
+    document.documentElement.classList.add('dark');
+} else {
+    document.documentElement.classList.remove('dark');
+}
+
+function toggleDarkMode() {
+    adminState.isDarkMode = !adminState.isDarkMode;
+    localStorage.setItem('ncafe_admin_dark_mode', adminState.isDarkMode);
+    if (adminState.isDarkMode) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+    renderAdmin();
+}
 
 // DOM ELEMENTS
 const adminApp = document.getElementById('admin-app');
@@ -75,23 +94,29 @@ function renderAdmin() {
     }
 
     const mainLayout = `
-        <main class="flex-1 h-screen overflow-y-auto bg-gray-50/50 md:ml-64 transition-all">
+        <main class="flex-1 h-screen overflow-y-auto bg-gray-50/50 dark:bg-dark-bg md:ml-64 transition-all">
             <!-- Header -->
-            <header class="bg-white border-b border-gray-100 sticky top-0 z-20 px-8 py-4 flex justify-between items-center">
+            <header class="bg-white dark:bg-dark-surface border-b border-gray-100 dark:border-dark-border sticky top-0 z-20 px-8 py-4 flex justify-between items-center transition-colors duration-300">
                 <div class="flex items-center gap-4">
-                     <button onclick="toggleSidebar()" class="p-2 -ml-2 hover:bg-gray-100 rounded-lg md:hidden text-secondary">
+                     <button onclick="toggleSidebar()" class="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-dark-border rounded-lg md:hidden text-secondary dark:text-gray-100">
                         <i data-lucide="menu" class="w-6 h-6"></i>
                     </button>
-                    <h1 class="text-2xl font-[800] capitalize text-secondary">${adminState.currentView === 'menu' ? 'Menu Management' : adminState.currentView}</h1>
+                    <h1 class="text-2xl font-[800] capitalize text-secondary dark:text-gray-100">${adminState.currentView === 'menu' ? 'Menu Management' : adminState.currentView}</h1>
                 </div>
                 
                 <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-3 border-l border-gray-100 pl-6">
+                    <!-- Theme Toggle Switch -->
+                    <div onclick="toggleDarkMode()" class="w-14 h-8 bg-gray-100 dark:bg-dark-bg/50 rounded-full p-1 cursor-pointer transition-all active:scale-95 group shadow-sm">
+                        <div class="h-6 w-6 rounded-full bg-white dark:bg-primary shadow-sm flex items-center justify-center transition-all ${adminState.isDarkMode ? 'translate-x-6' : 'translate-x-0'}">
+                            <i data-lucide="${adminState.isDarkMode ? 'sun' : 'moon'}" class="w-4 h-4 text-primary dark:text-white"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 border-l border-gray-100 dark:border-dark-border pl-6 transition-colors">
                          <div class="text-right hidden sm:block">
-                            <p class="text-sm font-bold">Admin</p>
-                            <p class="text-xs text-gray-400">Manager</p>
+                            <p class="text-sm font-bold text-secondary dark:text-gray-100">Admin</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 font-bold">Manager</p>
                          </div>
-                         <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">
+                         <div class="w-10 h-10 bg-gray-100 dark:bg-dark-bg rounded-xl flex items-center justify-center text-gray-400 dark:text-gray-500 group shadow-sm">
                             <i data-lucide="user" class="w-5 h-5"></i>
                          </div>
                     </div>
