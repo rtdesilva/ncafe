@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Timey Sound &amp; Global Game Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#04B2BA",
+                        "background-dark": "#0D0D0F",
+                        "card-dark": "#16161A",
+                    },
+                    fontFamily: {
+                        "sans": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .neon-glow {
+                box-shadow: 0 0 15px rgba(4, 178, 186, 0.4);
+            }
+            .neon-text {
+                text-shadow: 0 0 8px rgba(4, 178, 186, 0.6);
+            }
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .aspect-square-grid-item {
+                aspect-ratio: 1 / 1;
+            }
+            .icon-hover-glow:hover {
+                color: #04B2BA;
+                text-shadow: 0 0 8px rgba(4, 178, 186, 0.8);
+            }
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark font-sans text-slate-100 min-h-screen flex flex-col overflow-hidden">
+<header class="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-background-dark sticky top-0 z-50">
+<div class="flex flex-col">
+<h1 class="text-xs font-black tracking-tighter text-white uppercase leading-none">TIMEY <span class="text-primary neon-text">V2.0</span></h1>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="size-1.5 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[9px] font-bold text-primary/80 uppercase tracking-widest">Connected</span>
+</div>
+</div>
+<div class="flex items-center bg-white/5 px-3 py-1.5 rounded-full border border-white/10 gap-2">
+<span class="material-symbols-outlined text-[14px] text-slate-400">notifications_off</span>
+<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Silent Mode: <span class="text-white">OFF</span></span>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center text-slate-400 transition-all duration-300 icon-hover-glow">
+<span class="material-symbols-outlined text-[22px]">notifications</span>
+</button>
+<button class="flex items-center justify-center text-slate-400 transition-all duration-300 icon-hover-glow">
+<span class="material-symbols-outlined text-[22px]">account_circle</span>
+</button>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto pb-40 no-scrollbar">
+<div class="max-w-md mx-auto px-6 py-6 space-y-8">
+<section>
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Device View</h3>
+</div>
+<div class="bg-card-dark p-4 rounded-[2.5rem] border border-white/5 shadow-2xl relative">
+<div class="grid grid-cols-3 gap-3">
+<div class="relative bg-white/5 aspect-square-grid-item rounded-2xl border border-white/10 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
+<span class="absolute top-2 left-2 text-[10px] text-slate-600 font-black">7</span>
+</div>
+<div class="relative bg-white/5 aspect-square-grid-item rounded-2xl border border-white/10 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
+<span class="absolute top-2 left-2 text-[10px] text-slate-600 font-black">8</span>
+</div>
+<div class="relative bg-white/5 aspect-square-grid-item rounded-2xl border border-white/10 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
+<span class="absolute top-2 left-2 text-[10px] text-slate-600 font-black">9</span>
+</div>
+<div class="relative bg-white/5 aspect-square-grid-item rounded-2xl border border-white/10 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
+<span class="absolute top-2 left-2 text-[10px] text-slate-600 font-black">4</span>
+</div>
+<div class="relative bg-white/5 aspect-square-grid-item rounded-2xl border border-white/10 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
+<span class="absolute top-2 left-2 text-[10px] text-slate-600 font-black">5</span>
+</div>
+<div class="relative bg-white/5 aspect-square-grid-item rounded-2xl border border-white/10 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
+<span class="absolute top-2 left-2 text-[10px] text-slate-600 font-black">6</span>
+</div>
+<div class="relative bg-background-dark aspect-square-grid-item rounded-2xl border-2 border-primary flex items-center justify-center cursor-pointer neon-glow z-10">
+<span class="absolute top-2 left-2 text-[10px] text-primary font-black">1</span>
+<span class="material-symbols-outlined text-primary text-xl">volume_up</span>
+</div>
+<div class="relative bg-white/5 aspect-square-grid-item rounded-2xl border border-white/10 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
+<span class="absolute top-2 left-2 text-[10px] text-slate-600 font-black">2</span>
+</div>
+<div class="relative bg-white/5 aspect-square-grid-item rounded-2xl border border-white/10 flex items-center justify-center cursor-pointer active:scale-95 transition-all">
+<span class="absolute top-2 left-2 text-[10px] text-slate-600 font-black">3</span>
+</div>
+</div>
+</div>
+</section>
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Sound Configuration</h3>
+<span class="text-primary text-[9px] font-black px-3 py-1 bg-background-dark rounded-full border border-primary/30 tracking-widest">KEY 1 SELECTED</span>
+</div>
+<div class="bg-card-dark border border-white/10 rounded-3xl p-6 space-y-6">
+<div class="space-y-3">
+<label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Hardware Status</label>
+<div class="flex items-center justify-between bg-background-dark/50 border border-white/5 rounded-2xl px-5 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">toggle_on</span>
+<span class="text-sm font-bold text-slate-200">Physical Switch</span>
+</div>
+<span class="text-[10px] font-black uppercase tracking-wider text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">Audible</span>
+</div>
+</div>
+<div class="space-y-4">
+<label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Notification Sounds</label>
+<div class="relative">
+<select class="w-full bg-background-dark border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold text-slate-200 appearance-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none">
+<option>Digital Beep (Default)</option>
+<option>Gentle Chime</option>
+<option>Mechanical Click</option>
+<option>Space Pulse</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">expand_more</span>
+</div>
+<div class="border-2 border-dashed border-white/10 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 group cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-primary">upload_file</span>
+<p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">Upload Custom Sound</p>
+<p class="text-[9px] text-slate-600">MP3 or WAV, max 100kb</p>
+</div>
+</div>
+<div class="space-y-4 pt-4 border-t border-white/5">
+<div class="flex items-center justify-between">
+<label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Volume Control</label>
+<span class="text-[10px] font-black text-primary neon-text">75%</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-slate-500 text-lg">volume_mute</span>
+<div class="flex-1 h-1.5 bg-white/10 rounded-full relative overflow-hidden">
+<div class="absolute inset-y-0 left-0 bg-primary w-3/4 shadow-[0_0_10px_#04B2BA]"></div>
+</div>
+<span class="material-symbols-outlined text-slate-500 text-lg">volume_up</span>
+</div>
+<button class="w-full py-4 bg-background-dark border border-white/10 text-primary font-black uppercase tracking-widest text-[10px] rounded-2xl flex items-center justify-center gap-2 hover:bg-white/5 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">play_circle</span>
+                            Test Sound
+                        </button>
+</div>
+<div class="pt-2">
+<button class="w-full py-5 bg-primary text-background-dark font-black uppercase tracking-widest text-xs rounded-3xl flex items-center justify-center shadow-lg active:scale-[0.98] transition-all">
+                            UPDATE KEY 1
+                        </button>
+</div>
+</div>
+</section>
+<section class="space-y-3">
+<div class="flex items-center justify-between px-1">
+<h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Global Game Settings</h3>
+</div>
+<div class="bg-card-dark border border-white/10 rounded-3xl px-6 py-5">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<label class="text-[10px] font-black uppercase tracking-widest text-primary">Game Sounds</label>
+<span class="text-[11px] font-bold text-slate-200 mt-0.5">Neural Sync</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-3xl cursor-pointer">toggle_on</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<nav class="fixed bottom-0 left-0 right-0 bg-background-dark/95 backdrop-blur-xl border-t border-white/5 px-2 pb-8 pt-4 z-50">
+<div class="flex justify-between items-center max-w-lg mx-auto px-2">
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">keyboard</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Keys</span>
+</a>
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">palette</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Color</span>
+</a>
+<a class="flex flex-col items-center gap-2 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center bg-primary/20 text-primary rounded-2xl border border-primary/30 neon-glow">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1">volume_up</span>
+</div>
+<span class="text-[9px] font-black text-primary uppercase tracking-widest text-center neon-text">Sound</span>
+</a>
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">auto_awesome</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Disco</span>
+</a>
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">sports_esports</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Gaming</span>
+</a>
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">grid_view</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Profile</span>
+</a>
+</div>
+</nav>
+
+</body></html>

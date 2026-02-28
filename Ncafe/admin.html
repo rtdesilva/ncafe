@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N-Cafe Admin Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B00',
+                        secondary: '#111827',
+                        'dark-bg': '#0F172A',
+                        'dark-surface': '#1E293B',
+                        'dark-border': '#334155'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+
+<body class="bg-gray-50 dark:bg-dark-bg font-sans text-secondary antialiased transition-colors duration-300">
+    <div id="admin-app"
+        class="w-full min-h-screen relative flex bg-white dark:bg-dark-bg transition-colors duration-300">
+        <!-- Content will be injected here -->
+    </div>
+
+    <!-- Data Logic -->
+    <script src="data.js"></script>
+    <!-- Admin Logic -->
+    <script src="admin.js"></script>
+    <script>
+        // Initialize Lucide icons after content injection
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

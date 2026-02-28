@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Timey Profile Library Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#04B2BA",
+                        "background-dark": "#0D0D0F",
+                        "card-dark": "#16161A",
+                    },
+                    fontFamily: {
+                        "sans": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .neon-glow {
+                box-shadow: 0 0 15px rgba(4, 178, 186, 0.4);
+            }
+            .neon-text {
+                text-shadow: 0 0 8px rgba(4, 178, 186, 0.6);
+            }
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .icon-hover-glow:hover {
+                color: #04B2BA;
+                text-shadow: 0 0 8px rgba(4, 178, 186, 0.8);
+            }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark font-sans text-slate-100 min-h-screen flex flex-col">
+<header class="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-background-dark sticky top-0 z-50">
+<div class="flex flex-col">
+<h1 class="text-xs font-black tracking-tighter text-white uppercase">TIMEY <span class="text-primary neon-text">COMMAND CENTER</span></h1>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="size-1.5 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[9px] font-bold text-primary/80 uppercase tracking-widest">Connected</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 px-2 py-0.5 bg-white/5 rounded-full border border-white/10">
+<span class="material-symbols-outlined text-[14px] text-slate-400">notifications_off</span>
+<span class="text-[9px] font-black uppercase text-slate-400">Silent Mode</span>
+</div>
+<button class="flex items-center justify-center text-slate-400 transition-all duration-300 icon-hover-glow">
+<span class="material-symbols-outlined text-[22px]">notifications</span>
+</button>
+<button class="flex items-center justify-center text-slate-400 transition-all duration-300 icon-hover-glow">
+<span class="material-symbols-outlined text-[22px]">account_circle</span>
+</button>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto pb-32">
+<div class="max-w-md mx-auto px-6 py-6">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Profiles</h3>
+<span class="text-primary text-[10px] font-bold px-2 py-0.5 bg-primary/10 rounded-full border border-primary/20">6 TOTAL</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-card-dark rounded-3xl p-4 border-2 border-primary relative neon-glow">
+<span class="absolute top-3 right-3 bg-primary text-black text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase">Current</span>
+<div class="grid grid-cols-3 gap-1.5 mb-4 aspect-square">
+<div class="bg-primary/20 rounded-sm"></div><div class="bg-primary/40 rounded-sm"></div><div class="bg-primary/20 rounded-sm"></div>
+<div class="bg-primary/60 rounded-sm"></div><div class="bg-primary rounded-sm shadow-[0_0_8px_rgba(4,178,186,0.6)]"></div><div class="bg-primary/60 rounded-sm"></div>
+<div class="bg-primary/20 rounded-sm"></div><div class="bg-primary/40 rounded-sm"></div><div class="bg-primary/20 rounded-sm"></div>
+</div>
+<h4 class="text-sm font-bold text-white">Deep Work</h4>
+<p class="text-[10px] text-slate-500 font-medium">Coding Flow</p>
+</div>
+<div class="bg-card-dark rounded-3xl p-4 border border-white/10 relative">
+<div class="grid grid-cols-3 gap-1.5 mb-4 aspect-square">
+<div class="bg-red-500/80 rounded-sm"></div><div class="bg-orange-500/80 rounded-sm"></div><div class="bg-orange-500/80 rounded-sm"></div>
+<div class="bg-red-600 rounded-sm"></div><div class="bg-red-500 rounded-sm"></div><div class="bg-red-600 rounded-sm"></div>
+<div class="bg-slate-700 rounded-sm"></div><div class="bg-slate-700 rounded-sm"></div><div class="bg-slate-700 rounded-sm"></div>
+</div>
+<h4 class="text-sm font-bold text-white">Gaming</h4>
+<p class="text-[10px] text-slate-500 font-medium">FPS Shortcuts</p>
+</div>
+<div class="bg-card-dark rounded-3xl p-4 border border-white/10 relative">
+<div class="grid grid-cols-3 gap-1.5 mb-4 aspect-square">
+<div class="bg-emerald-700 rounded-sm"></div><div class="bg-emerald-800 rounded-sm"></div><div class="bg-emerald-700 rounded-sm"></div>
+<div class="bg-emerald-500 rounded-sm"></div><div class="bg-emerald-400 rounded-sm"></div><div class="bg-emerald-500 rounded-sm"></div>
+<div class="bg-amber-500 rounded-sm"></div><div class="bg-amber-600 rounded-sm"></div><div class="bg-amber-500 rounded-sm"></div>
+</div>
+<h4 class="text-sm font-bold text-white">Relax</h4>
+<p class="text-[10px] text-slate-500 font-medium">Media &amp; Spotify</p>
+</div>
+<div class="bg-card-dark rounded-3xl p-4 border border-white/10 relative">
+<div class="grid grid-cols-3 gap-1.5 mb-4 aspect-square">
+<div class="bg-blue-900 rounded-sm"></div><div class="bg-blue-800 rounded-sm"></div><div class="bg-blue-900 rounded-sm"></div>
+<div class="bg-blue-600 rounded-sm"></div><div class="bg-blue-500 rounded-sm"></div><div class="bg-blue-600 rounded-sm"></div>
+<div class="bg-blue-400 rounded-sm"></div><div class="bg-blue-300 rounded-sm"></div><div class="bg-blue-400 rounded-sm"></div>
+</div>
+<h4 class="text-sm font-bold text-white">Study Sessions</h4>
+<p class="text-[10px] text-slate-500 font-medium">Focus Timers</p>
+</div>
+<div class="bg-card-dark rounded-3xl p-4 border border-white/10 relative">
+<div class="grid grid-cols-3 gap-1.5 mb-4 aspect-square">
+<div class="bg-orange-600 rounded-sm"></div><div class="bg-yellow-500 rounded-sm"></div><div class="bg-orange-600 rounded-sm"></div>
+<div class="bg-orange-500 rounded-sm"></div><div class="bg-orange-400 rounded-sm"></div><div class="bg-orange-500 rounded-sm"></div>
+<div class="bg-yellow-600 rounded-sm"></div><div class="bg-yellow-700 rounded-sm"></div><div class="bg-yellow-600 rounded-sm"></div>
+</div>
+<h4 class="text-sm font-bold text-white">Fitness</h4>
+<p class="text-[10px] text-slate-500 font-medium">Exercise Sets</p>
+</div>
+<div class="bg-card-dark rounded-3xl p-4 border border-white/10 relative">
+<div class="grid grid-cols-3 gap-1.5 mb-4 aspect-square">
+<div class="bg-amber-900/50 rounded-sm"></div><div class="bg-amber-900/50 rounded-sm"></div><div class="bg-amber-900/50 rounded-sm"></div>
+<div class="bg-amber-800/60 rounded-sm"></div><div class="bg-amber-700/60 rounded-sm"></div><div class="bg-amber-800/60 rounded-sm"></div>
+<div class="bg-amber-950 rounded-sm"></div><div class="bg-amber-950 rounded-sm"></div><div class="bg-amber-950 rounded-sm"></div>
+</div>
+<h4 class="text-sm font-bold text-white">Night Shift</h4>
+<p class="text-[10px] text-slate-500 font-medium">Muted Tones</p>
+</div>
+<button class="bg-transparent rounded-3xl border-2 border-dashed border-white/10 p-4 aspect-[4/5] flex flex-col items-center justify-center gap-3 active:scale-95 transition-all group">
+<div class="size-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-primary text-3xl">add</span>
+</div>
+<span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-300">Add Profile</span>
+</button>
+</div>
+</div>
+</main>
+<nav class="fixed bottom-0 left-0 right-0 bg-background-dark/95 backdrop-blur-xl border-t border-white/5 px-2 pb-8 pt-4 z-50">
+<div class="flex justify-between items-center max-w-lg mx-auto px-2">
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">keyboard</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Keys</span>
+</a>
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">palette</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Color</span>
+</a>
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">volume_up</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Sound</span>
+</a>
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">auto_awesome</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Disco</span>
+</a>
+<a class="flex flex-col items-center gap-2 text-slate-500 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">sports_esports</span>
+</div>
+<span class="text-[9px] font-black uppercase tracking-widest text-center">Gaming</span>
+</a>
+<a class="flex flex-col items-center gap-2 group flex-1" href="#">
+<div class="size-11 flex items-center justify-center bg-primary/20 text-primary rounded-2xl border border-primary/30 neon-glow">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1">grid_view</span>
+</div>
+<span class="text-[9px] font-black text-primary uppercase tracking-widest text-center">Profile</span>
+</a>
+</div>
+</nav>
+
+</body></html>

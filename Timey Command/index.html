@@ -1,0 +1,2499 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Timey Command Center</title>
+
+    <!-- Scripts & Frameworks -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#04B2BA",
+                        "background-dark": "#000000",
+                        "card-dark": "#0D0D0F",
+                    },
+                    fontFamily: {
+                        "sans": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .neon-glow {
+                box-shadow: 0 0 15px rgba(4, 178, 186, 0.4);
+            }
+            .neon-text {
+                text-shadow: 0 0 8px rgba(4, 178, 186, 0.6);
+            }
+            .active-ring {
+                background: conic-gradient(#04B2BA 75%, transparent 0);
+            }
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .icon-hover-glow:hover {
+                color: #04B2BA;
+                text-shadow: 0 0 8px rgba(4, 178, 186, 0.8);
+            }
+            .equalizer-bar-modern {
+                background: linear-gradient(180deg, #04B2BA 0%, rgba(4, 178, 186, 0.3) 100%);
+                border-radius: 99px;
+                box-shadow: 0 0 12px rgba(4, 178, 186, 0.5), inset 0 0 4px rgba(255, 255, 255, 0.2);
+            }
+            .pulse-animation {
+                animation: sync-pulse 1.5s ease-in-out infinite;
+            }
+            @keyframes sync-pulse {
+                0%, 100% { opacity: 0.6; transform: scale(1); }
+                50% { opacity: 1; transform: scale(1.02); }
+            }
+            .bar-pulse {
+                animation: bar-sync 1.2s ease-in-out infinite alternate;
+            }
+            @keyframes bar-sync {
+                from { height: 30%; }
+                to { height: 90%; }
+            }
+            .color-wheel-bg {
+                background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+            }
+            .neon-border {
+                box-shadow: 0 0 12px rgba(4, 178, 186, 0.6), inset 0 0 8px rgba(4, 178, 186, 0.2);
+            }
+        }
+    </style>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            overflow: hidden;
+            margin: 0;
+            color: #f1f5f9;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Mobile Frame Container */
+        #device-container {
+            width: 100%;
+            height: 100%;
+            max-width: 430px;
+            /* iPhone 14 Pro Max width approx */
+            max-height: 932px;
+            background: #000;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 8px solid #111;
+            border-radius: 40px;
+            box-shadow: 0 0 100px rgba(0, 0, 0, 0.5), 0 0 20px rgba(4, 178, 186, 0.1);
+        }
+
+        @media (max-width: 450px) {
+            #device-container {
+                max-width: 100%;
+                max-height: 100%;
+                border: none;
+                border-radius: 0;
+            }
+        }
+
+        .scroll-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 120px;
+            scrollbar-width: none;
+        }
+
+        .scroll-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .glass-card {
+            background: rgba(13, 13, 15, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .react-root {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Prevent flicker before GSAP */
+        .content-hidden {
+            opacity: 0;
+        }
+    </style>
+</head>
+
+<body class="bg-black font-sans text-slate-100">
+    <div id="device-container">
+        <div id="root" class="react-root"></div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const INITIAL_KEYS = [
+            { id: 7, mode: 'MACRO', icon: 'keyboard_command_key', label: 'Keyboard Macro', active: true, macroCategory: 'KEYSTROKE', macroShortcut: 'CTRL + SHIFT + T', appPath: 'Google Chrome', systemAction: 'Mute', color: '#FB923C', lightingEffect: 'Static', brightness: 100, speed: 50, soundEnabled: true, notificationSound: 'Digital Beep (Default)', volume: 75, customSoundPath: null },
+            { id: 8, mode: 'TIMER', icon: 'mic', label: 'Mic Duration', workDuration: 0, remaining: 0, active: false, recurrent: false, includeBreak: false, breakDuration: 300, isBreak: false, color: '#C084FC', lightingEffect: 'Static', brightness: 100, speed: 50, soundEnabled: true, notificationSound: 'Digital Beep (Default)', volume: 75, customSoundPath: null },
+            { id: 9, mode: 'ALARM', icon: 'alarm', label: 'Wake-up Alarm', targetTime: '07:30', active: true, recurrent: true, activeDays: [0, 1, 2, 3, 4], color: '#F472B6', lightingEffect: 'Static', brightness: 100, speed: 50, soundEnabled: true, notificationSound: 'Digital Beep (Default)', volume: 75, customSoundPath: null },
+            { id: 4, mode: 'TIMER', icon: 'timer', label: 'Short Break', workDuration: 1800, remaining: 1800, active: false, recurrent: true, includeBreak: true, breakDuration: 300, isBreak: false, color: '#60A5FA', lightingEffect: 'Static', brightness: 100, speed: 50, soundEnabled: true, notificationSound: 'Digital Beep (Default)', volume: 75, customSoundPath: null },
+            { id: 5, mode: 'TIMER', icon: 'timer', label: 'Lunch Break', workDuration: 2400, remaining: 2400, active: false, recurrent: true, includeBreak: true, breakDuration: 1800, isBreak: false, color: '#4ADE80', lightingEffect: 'Static', brightness: 100, speed: 50, soundEnabled: true, notificationSound: 'Digital Beep (Default)', volume: 75, customSoundPath: null },
+            { id: 6, mode: 'TIMER', icon: 'timer', label: 'Deep Work', workDuration: 3000, remaining: 3000, active: false, recurrent: true, includeBreak: true, breakDuration: 600, isBreak: false, color: '#FACC15', lightingEffect: 'Static', brightness: 100, speed: 50, soundEnabled: true, notificationSound: 'Digital Beep (Default)', volume: 75, customSoundPath: null },
+            { id: 1, mode: 'TIMER', icon: 'timer', label: 'Focus Timer', workDuration: 300, remaining: 262, active: true, recurrent: true, includeBreak: true, breakDuration: 300, isBreak: false, color: '#04B2BA', lightingEffect: 'Static', brightness: 100, speed: 50, soundEnabled: true, notificationSound: 'Digital Beep (Default)', volume: 75, customSoundPath: null },
+            { id: 2, mode: 'TIMER', icon: 'timer', label: 'Social Media', workDuration: 600, remaining: 600, active: false, recurrent: false, includeBreak: false, breakDuration: 300, isBreak: false, color: '#F87171', lightingEffect: 'Static', brightness: 100, speed: 50, soundEnabled: true, notificationSound: 'Digital Beep (Default)', volume: 75, customSoundPath: null },
+            { id: 3, mode: 'TIMER', icon: 'timer', label: 'Email Check', workDuration: 900, remaining: 900, active: false, recurrent: false, includeBreak: false, breakDuration: 300, isBreak: false, color: '#818CF8', lightingEffect: 'Static', brightness: 100, speed: 50, soundEnabled: true, notificationSound: 'Digital Beep (Default)', volume: 75, customSoundPath: null }
+        ];
+
+        const INITIAL_PROFILES = [
+            { id: 1, name: 'Default', subtext: 'Standard Setup', active: true, settings: { keys: JSON.parse(JSON.stringify(INITIAL_KEYS)) } },
+            { id: 2, name: 'Gaming', subtext: 'FPS Shortcuts', active: false, settings: { keys: INITIAL_KEYS.map(k => ({ ...k, color: k.id > 3 ? '#EF4444' : '#334155' })) } },
+            { id: 3, name: 'Relax', subtext: 'Media & Spotify', active: false, settings: { keys: INITIAL_KEYS.map(k => ({ ...k, color: '#10B981' })) } },
+            { id: 4, name: 'Study Sessions', subtext: 'Focus Timers', active: false, settings: { keys: INITIAL_KEYS.map(k => ({ ...k, color: '#3B82F6' })) } },
+            { id: 5, name: 'Fitness', subtext: 'Exercise Sets', active: false, settings: { keys: INITIAL_KEYS.map(k => ({ ...k, color: '#F97316' })) } },
+            { id: 6, name: 'Deep Work', subtext: 'Coding Flow', active: false, settings: { keys: JSON.parse(JSON.stringify(INITIAL_KEYS)) } }
+        ];
+
+        const formatTime = (seconds) => {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        const Header = () => (
+            <header className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-black/80 backdrop-blur-md sticky top-0 z-50 shrink-0">
+                <div className="flex flex-col">
+                    <h1 className="text-[11px] font-black tracking-tighter text-white uppercase italic">
+                        TIMEY <span className="text-primary neon-text">COMMAND CENTER</span>
+                    </h1>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="size-1.5 rounded-full bg-primary animate-pulse"></span>
+                        <span className="text-[8px] font-bold text-primary/80 uppercase tracking-widest">Connected</span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <button className="flex items-center justify-center text-slate-400 transition-all duration-300 icon-hover-glow">
+                        <span className="material-symbols-outlined text-[20px]">notifications</span>
+                    </button>
+                    <button className="flex items-center justify-center text-slate-400 transition-all duration-300 icon-hover-glow">
+                        <span className="material-symbols-outlined text-[20px]">account_circle</span>
+                    </button>
+                </div>
+            </header>
+        );
+
+        const KeyItem = ({ id, mode, icon, remaining, targetTime, active, isSelected, isBreak, onClick, color }) => {
+            const isTimer = mode === 'TIMER';
+            const isRunning = active;
+            const subtext = isTimer ? formatTime(remaining) : (mode === 'ALARM' ? targetTime : (id === 7 ? 'ACTIVE' : ''));
+            const borderClass = isBreak ? 'border-amber-500/30' : 'border-primary/20';
+
+            return (
+                <div
+                    onClick={onClick}
+                    className={`relative w-full aspect-square rounded-2xl border transition-all cursor-pointer active:scale-95 flex flex-col items-center justify-center group ${isSelected
+                        ? `bg-black border-2 neon-glow z-10 ${isBreak ? 'border-amber-500' : 'border-primary'}`
+                        : isRunning
+                            ? `${isBreak ? 'bg-amber-500/5 border-amber-500/20' : 'bg-primary/5 border-primary/20'}`
+                            : 'bg-white/5 border-white/10'
+                        }`}
+                >
+                    <span className={`absolute top-2.5 left-2.5 text-[9px] font-black uppercase ${isSelected || isRunning ? (isBreak ? 'text-amber-500' : 'text-primary') : 'text-slate-600'}`}>
+                        {id}
+                    </span>
+
+                    {(isRunning && isTimer) || (isSelected && isTimer) ? (
+                        <div className={`size-10 rounded-full border-[2px] ${isSelected ? 'border-white/10' : borderClass} flex items-center justify-center relative`}>
+                            <div className={`absolute inset-0 rounded-full active-ring opacity-40 ${isBreak ? 'bg-amber-500' : 'bg-primary'}`}></div>
+                            <span className={`${isBreak ? 'text-amber-500' : 'text-primary'} font-black text-[9px]`}>{subtext}</span>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center">
+                            <span className={`material-symbols-outlined ${isSelected || isRunning ? (isBreak ? 'text-amber-500' : 'text-primary neon-text') : 'text-slate-500'} text-[24px] mb-1`} style={isSelected || isRunning ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                                {icon}
+                            </span>
+                            {subtext && <span className={`text-[9px] font-black ${isSelected || isRunning ? (isBreak ? 'text-amber-500' : 'text-primary') : 'text-slate-500'}`}>{subtext}</span>}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const KeyGrid = ({ selectedKey, setSelectedKey, keysData }) => (
+            <section className="mb-8 p-6 glass-card rounded-[2rem] shadow-2xl relative" id="key-grid">
+                <div className="grid grid-cols-3 gap-4">
+                    {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(id => {
+                        const key = keysData.find(k => k.id === id);
+                        return (
+                            <KeyItem
+                                key={id}
+                                {...key}
+                                isSelected={selectedKey === id}
+                                onClick={() => setSelectedKey(id)}
+                            />
+                        );
+                    })}
+                </div>
+            </section>
+        );
+
+        const KeyConfiguration = ({ selectedKey, keysData, onUpdate }) => {
+            const currentKey = keysData.find(k => k.id === selectedKey);
+            const [mode, setMode] = useState(currentKey.mode);
+            const [localConfig, setLocalConfig] = useState({ ...currentKey });
+
+            const [isRecording, setIsRecording] = useState(false);
+            const [isAppDropdownOpen, setIsAppDropdownOpen] = useState(false);
+            const [isSystemDropdownOpen, setIsSystemDropdownOpen] = useState(false);
+
+            useEffect(() => {
+                setMode(currentKey.mode);
+                setLocalConfig({ ...currentKey });
+                setIsRecording(false);
+                setIsAppDropdownOpen(false);
+                setIsSystemDropdownOpen(false);
+            }, [selectedKey, currentKey.id]);
+
+            // Handle Key Recording Simulation
+            useEffect(() => {
+                if (!isRecording) return;
+
+                const handleKeyDown = (e) => {
+                    e.preventDefault();
+                    const keys = [];
+                    if (e.ctrlKey) keys.push('CTRL');
+                    if (e.shiftKey) keys.push('SHIFT');
+                    if (e.altKey) keys.push('ALT');
+                    if (e.metaKey) keys.push('WIN');
+
+                    const key = e.key.toUpperCase();
+                    if (!['CONTROL', 'SHIFT', 'ALT', 'META'].includes(key)) {
+                        keys.push(key);
+                        setLocalConfig(prev => ({ ...prev, macroShortcut: keys.join(' + ') }));
+                        setIsRecording(false); // Stop after one sequence
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [isRecording]);
+
+            const apps = ['Google Chrome', 'Discord', 'Spotify', 'Visual Studio Code', 'Adobe Photoshop'];
+            const systemActions = ['Mute', 'Unmute', 'Toggle Dark Mode', 'Sleep', 'Lock Screen', 'Volume Up', 'Volume Down'];
+
+            const handleUpdate = () => {
+                const btn = document.getElementById('update-btn');
+                btn.innerText = 'SAVING...';
+                btn.classList.add('opacity-50');
+
+                setTimeout(() => {
+                    // Update current remaining if timer is changed
+                    const updatedConfig = { ...localConfig, mode };
+                    if (mode === 'TIMER') {
+                        updatedConfig.remaining = localConfig.workDuration;
+                        updatedConfig.isBreak = false;
+                    }
+                    onUpdate(selectedKey, updatedConfig);
+
+                    btn.innerText = 'KEY ' + selectedKey + ' UPDATED';
+                    btn.classList.remove('opacity-50');
+                    btn.classList.add('bg-white', 'text-black', 'neon-glow');
+                    setTimeout(() => {
+                        btn.innerText = 'UPDATE KEY ' + selectedKey;
+                        btn.classList.remove('bg-white', 'neon-glow');
+                        btn.classList.add('bg-primary');
+                    }, 2000);
+                }, 800);
+            };
+
+            return (
+                <section className="mb-8 relative z-40">
+                    <div className="flex items-center justify-between mb-4 px-2">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic text-shadow-none">KEY CONFIGURATION</h3>
+                        <span className="text-primary text-[9px] font-black uppercase px-3 py-1 bg-primary/10 rounded-full border border-primary/20 tracking-wider">
+                            KEY {selectedKey} SELECTED
+                        </span>
+                    </div>
+
+                    <div className="bg-card-dark border border-white/5 rounded-3xl p-6 space-y-6">
+                        <div className="flex p-1.5 bg-[#0A0A0B] rounded-2xl border border-white/5 w-full">
+                            {['TIMER', 'ALARM', 'MACRO'].map(m => (
+                                <button
+                                    key={m}
+                                    onClick={() => setMode(m)}
+                                    className={`flex-1 py-3 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${mode === m ? 'bg-primary text-black scale-[1.02] shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
+
+                        {mode === 'TIMER' && (
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">WORK DURATION (MM:SS)</label>
+                                    <div className="relative group">
+                                        <input
+                                            className="w-full bg-black border border-white/10 rounded-2xl py-4 px-6 text-2xl font-black text-center text-primary neon-text outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all shadow-inner"
+                                            type="text"
+                                            value={formatTime(localConfig.workDuration || 0)}
+                                            onChange={(e) => {
+                                                const parts = e.target.value.split(':');
+                                                if (parts.length === 2) {
+                                                    const secs = (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+                                                    setLocalConfig({ ...localConfig, workDuration: secs });
+                                                }
+                                            }}
+                                        />
+                                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                                            <span className="material-symbols-outlined text-slate-600 transition-colors text-xl group-hover:text-primary">timer</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between px-1">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-bold text-white uppercase tracking-wider">RECURRENT</span>
+                                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Interval-style looping</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setLocalConfig({ ...localConfig, recurrent: !localConfig.recurrent })}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full border border-white/10 transition-colors ${localConfig.recurrent ? 'bg-primary/20 border-primary/30' : 'bg-white/10'}`}>
+                                            <span className={`inline-block h-4 w-4 transform rounded-full shadow-lg transition-transform duration-200 ${localConfig.recurrent ? 'translate-x-6 bg-primary' : 'translate-x-1 bg-slate-500'}`}></span>
+                                        </button>
+                                    </div>
+
+                                    {localConfig.recurrent && (
+                                        <div className="pl-6 space-y-6 border-l border-white/5 animate-in slide-in-from-left-2 duration-300">
+                                            <div className="flex items-center justify-between px-1">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">INCLUDE BREAK TIME</span>
+                                                    <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">AUTO-START REST PERIOD</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => setLocalConfig({ ...localConfig, includeBreak: !localConfig.includeBreak })}
+                                                    className={`relative inline-flex h-5 w-9 items-center rounded-full border border-white/10 transition-colors ${localConfig.includeBreak ? 'bg-primary/20 border-primary/30' : 'bg-white/5'}`}>
+                                                    <span className={`inline-block h-3 w-3 transform rounded-full shadow-lg transition-transform duration-200 ${localConfig.includeBreak ? 'translate-x-5 bg-primary' : 'translate-x-1 bg-slate-500'}`}></span>
+                                                </button>
+                                            </div>
+
+                                            {localConfig.includeBreak && (
+                                                <div className="pl-4 space-y-2 animate-in slide-in-from-top-2 duration-300">
+                                                    <label className="text-[8px] font-black uppercase tracking-widest text-slate-600 ml-1">BREAK DURATION (MM:SS)</label>
+                                                    <input
+                                                        className="w-full bg-black/40 border border-white/5 rounded-xl py-3 px-6 text-sm font-black text-center text-slate-400 outline-none focus:border-primary/30 transition-all"
+                                                        type="text"
+                                                        value={formatTime(localConfig.breakDuration || 300)}
+                                                        onChange={(e) => {
+                                                            const parts = e.target.value.split(':');
+                                                            if (parts.length === 2) {
+                                                                const secs = (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+                                                                setLocalConfig({ ...localConfig, breakDuration: secs });
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="pt-2 flex items-center justify-between px-1 border-t border-white/5">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-bold text-white uppercase tracking-wider">ACTIVE NOW</span>
+                                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Start timer immediately</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setLocalConfig({ ...localConfig, active: !localConfig.active })}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full border border-white/10 transition-colors ${localConfig.active ? 'bg-primary/20 border-primary/30' : 'bg-white/10'}`}>
+                                            <span className={`inline-block h-4 w-4 transform rounded-full shadow-lg transition-transform duration-200 ${localConfig.active ? 'translate-x-6 bg-primary' : 'translate-x-1 bg-slate-500'}`}></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {mode === 'ALARM' && (
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">ALARM TIME (HH:MM)</label>
+                                    <div className="relative group">
+                                        <input
+                                            className="w-full bg-black border border-white/10 rounded-2xl py-4 px-6 text-2xl font-black text-center text-primary neon-text outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all shadow-inner"
+                                            type="text"
+                                            value={localConfig.targetTime || '00:00'}
+                                            onChange={(e) => setLocalConfig({ ...localConfig, targetTime: e.target.value })}
+                                        />
+                                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                                            <span className="material-symbols-outlined text-slate-600 transition-colors text-xl group-hover:text-primary">schedule</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between px-1">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-bold text-white uppercase tracking-wider">RECURRENT</span>
+                                            <span className="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-0.5">WEEKLY REPEATED WAKE-UP</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setLocalConfig({ ...localConfig, recurrent: !localConfig.recurrent })}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full border border-white/10 transition-colors ${localConfig.recurrent ? 'bg-primary/20 border-primary/30' : 'bg-white/10'}`}>
+                                            <span className={`inline-block h-4 w-4 transform rounded-full shadow-lg transition-transform duration-200 ${localConfig.recurrent ? 'translate-x-6 bg-primary' : 'translate-x-1 bg-slate-500'}`}></span>
+                                        </button>
+                                    </div>
+
+                                    <div className={`space-y-3 transition-all duration-300 ${localConfig.recurrent ? 'opacity-100' : 'opacity-20 pointer-events-none'}`}>
+                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 italic ml-1">ACTIVE DAYS</p>
+                                        <div className="flex justify-between items-center gap-1.5 mt-1">
+                                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
+                                                const activeDays = localConfig.activeDays || [];
+                                                const isActive = activeDays.includes(idx);
+                                                return (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => {
+                                                            const newDays = isActive
+                                                                ? activeDays.filter(d => d !== idx)
+                                                                : [...activeDays, idx];
+                                                            setLocalConfig({ ...localConfig, activeDays: newDays });
+                                                        }}
+                                                        className={`size-10 rounded-full border transition-all duration-300 flex items-center justify-center text-[11px] font-black ${isActive
+                                                            ? 'bg-primary border-primary text-black neon-glow'
+                                                            : 'bg-white/5 border-white/5 text-slate-600'}`}>
+                                                        {day}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-2 flex items-center justify-between px-1 border-t border-white/5">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-bold text-white uppercase tracking-wider">ENABLED</span>
+                                            <span className="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-0.5">Start monitoring alarm</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setLocalConfig({ ...localConfig, active: !localConfig.active })}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full border border-white/10 transition-colors ${localConfig.active ? 'bg-primary/20 border-primary/30' : 'bg-white/10'}`}>
+                                            <span className={`inline-block h-4 w-4 transform rounded-full shadow-lg transition-transform duration-200 ${localConfig.active ? 'translate-x-6 bg-primary' : 'translate-x-1 bg-slate-500'}`}></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {mode === 'MACRO' && (
+                            <div className="space-y-8">
+                                {/* Category 1: Keystroke */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between px-1">
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => setLocalConfig({ ...localConfig, macroCategory: 'KEYSTROKE' })}
+                                                className={`size-5 rounded-full border-2 flex items-center justify-center transition-all ${localConfig.macroCategory === 'KEYSTROKE' ? 'border-primary' : 'border-slate-700'}`}>
+                                                {localConfig.macroCategory === 'KEYSTROKE' && <div className="size-2.5 rounded-full bg-primary neon-glow"></div>}
+                                            </button>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${localConfig.macroCategory === 'KEYSTROKE' ? 'text-primary' : 'text-slate-500'}`}>KEYSTROKE SEQUENCE</span>
+                                        </div>
+                                        {localConfig.macroCategory === 'KEYSTROKE' && isRecording && (
+                                            <span className="text-[8px] font-black text-slate-500 tracking-widest animate-pulse">RECORDING...</span>
+                                        )}
+                                    </div>
+                                    <div className={`flex gap-3 transition-all ${localConfig.macroCategory === 'KEYSTROKE' ? 'opacity-100' : 'opacity-20 pointer-events-none'}`}>
+                                        <div className="flex-1 relative">
+                                            <input
+                                                className="w-full bg-black border border-primary/30 rounded-3xl py-6 px-8 text-sm font-black text-center text-primary neon-text tracking-widest outline-none shadow-[inset_0_0_20px_rgba(4,176,185,0.05)]"
+                                                readOnly
+                                                value={localConfig.macroShortcut || 'PRESS KEYS'}
+                                            />
+                                            <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                                <div className={`size-2.5 rounded-full ${isRecording ? 'bg-red-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-red-900/40'}`}></div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setIsRecording(!isRecording)}
+                                            className={`size-20 rounded-3xl flex items-center justify-center transition-all border-2 border-white/5 ${isRecording ? 'bg-red-500/10 border-red-500/20' : 'bg-white/5'}`}>
+                                            <div className={`size-7 rounded-lg transition-all ${isRecording ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-red-900/20 rounded-full'}`}></div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Category 2: App Launcher */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3 px-1">
+                                        <button
+                                            onClick={() => setLocalConfig({ ...localConfig, macroCategory: 'APP' })}
+                                            className={`size-5 rounded-full border-2 flex items-center justify-center transition-all ${localConfig.macroCategory === 'APP' ? 'border-primary' : 'border-slate-700'}`}>
+                                            {localConfig.macroCategory === 'APP' && <div className="size-2.5 rounded-full bg-primary neon-glow"></div>}
+                                        </button>
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${localConfig.macroCategory === 'APP' ? 'text-primary' : 'text-slate-500'}`}>APP LAUNCHER</span>
+                                    </div>
+                                    <div className={`relative transition-all ${localConfig.macroCategory === 'APP' ? 'opacity-100' : 'opacity-20 pointer-events-none'}`}>
+                                        <div onClick={() => setIsAppDropdownOpen(!isAppDropdownOpen)} className="bg-black border border-white/10 rounded-[2rem] p-5 flex items-center justify-between cursor-pointer hover:border-white/20 transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <span className="material-symbols-outlined text-slate-500 text-xl group-hover:text-primary transition-colors">language</span>
+                                                <span className="text-[11px] font-black text-slate-200 uppercase tracking-wider">{localConfig.appPath || 'Select App'}</span>
+                                            </div>
+                                            <span className={`material-symbols-outlined text-slate-600 transition-transform ${isAppDropdownOpen ? 'rotate-180' : ''}`}>{isAppDropdownOpen ? 'expand_less' : 'expand_more'}</span>
+                                        </div>
+                                        {isAppDropdownOpen && (
+                                            <div className="absolute top-[110%] left-0 right-0 bg-black border border-white/10 rounded-2xl p-2 z-[100] shadow-[0_30px_60px_-12px_rgba(0,0,0,1)] border-b-2 border-b-primary shadow-[0_10px_20px_-10px_rgba(4,178,186,0.5)] animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="max-h-56 overflow-y-auto no-scrollbar space-y-0.5">
+                                                    {apps.map(app => (
+                                                        <div key={app} onClick={() => { setLocalConfig({ ...localConfig, appPath: app }); setIsAppDropdownOpen(false); }} className="p-3 text-[10px] font-bold text-slate-400 hover:bg-primary/10 hover:text-primary rounded-xl cursor-pointer transition-all uppercase flex items-center gap-3">
+                                                            <span className="size-1 rounded-full bg-primary shadow-[0_0_8px_#04B2BA]"></span>
+                                                            {app}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Category 3: System Action */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3 px-1">
+                                        <button
+                                            onClick={() => setLocalConfig({ ...localConfig, macroCategory: 'SYSTEM' })}
+                                            className={`size-5 rounded-full border-2 flex items-center justify-center transition-all ${localConfig.macroCategory === 'SYSTEM' ? 'border-primary' : 'border-slate-700'}`}>
+                                            {localConfig.macroCategory === 'SYSTEM' && <div className="size-2.5 rounded-full bg-primary neon-glow"></div>}
+                                        </button>
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${localConfig.macroCategory === 'SYSTEM' ? 'text-primary' : 'text-slate-500'}`}>SYSTEM ACTION</span>
+                                    </div>
+                                    <div className={`relative transition-all ${localConfig.macroCategory === 'SYSTEM' ? 'opacity-100' : 'opacity-20 pointer-events-none'}`}>
+                                        <div onClick={() => setIsSystemDropdownOpen(!isSystemDropdownOpen)} className="bg-black border border-white/10 rounded-[2rem] p-5 flex items-center justify-between cursor-pointer hover:border-white/20 transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <span className="material-symbols-outlined text-slate-500 text-xl group-hover:text-primary transition-colors">settings_input_component</span>
+                                                <span className="text-[11px] font-black text-slate-200 uppercase tracking-wider">{localConfig.systemAction || 'Select Action'}</span>
+                                            </div>
+                                            <span className={`material-symbols-outlined text-slate-600 transition-transform ${isSystemDropdownOpen ? 'rotate-180' : ''}`}>{isSystemDropdownOpen ? 'expand_less' : 'expand_more'}</span>
+                                        </div>
+                                        {isSystemDropdownOpen && (
+                                            <div className="absolute top-[110%] left-0 right-0 bg-black border border-white/10 rounded-2xl p-2 z-[100] shadow-[0_30px_60px_-12px_rgba(0,0,0,1)] border-b-2 border-b-primary shadow-[0_10px_20px_-10px_rgba(4,178,186,0.5)] animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="max-h-56 overflow-y-auto no-scrollbar space-y-0.5">
+                                                    {systemActions.map(action => (
+                                                        <div key={action} onClick={() => { setLocalConfig({ ...localConfig, systemAction: action }); setIsSystemDropdownOpen(false); }} className="p-3 text-[10px] font-bold text-slate-400 hover:bg-primary/10 hover:text-primary rounded-xl cursor-pointer transition-all uppercase flex items-center gap-3">
+                                                            <span className="size-1 rounded-full bg-primary shadow-[0_0_8px_#04B2BA]"></span>
+                                                            {action}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            id="update-btn"
+                            onClick={handleUpdate}
+                            className="w-full py-4 bg-primary text-black font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] hover:brightness-110 hover:neon-glow transition-all duration-300">
+                            UPDATE KEY {selectedKey}
+                        </button>
+                    </div>
+                </section>
+            );
+        };
+
+        const PaletteSwatch = ({ color, idx, isActive, onSelect, onRemove, pressTimer }) => {
+            const [isHolding, setIsHolding] = useState(false);
+
+            const startHold = () => {
+                setIsHolding(true);
+                pressTimer.current = setTimeout(() => {
+                    setIsHolding(false);
+                    onRemove(idx);
+                    gsap.to(".react-root", { x: 2, repeat: 5, yoyo: true, duration: 0.05 });
+                }, 800);
+            };
+
+            const endHold = () => {
+                setIsHolding(false);
+                clearTimeout(pressTimer.current);
+            };
+
+            return (
+                <div className="relative group shrink-0">
+                    <button
+                        onMouseDown={startHold}
+                        onMouseUp={endHold}
+                        onMouseLeave={endHold}
+                        onTouchStart={startHold}
+                        onTouchEnd={endHold}
+                        onClick={() => {
+                            if (!isHolding) {
+                                onSelect(color, idx);
+                            }
+                        }}
+                        className={`size-6 rounded-full transition-all duration-300 ${isActive ? 'ring-2 ring-white ring-offset-2 ring-offset-black scale-110 shadow-lg' : 'hover:scale-110 opacity-70 hover:opacity-100'} ${isHolding ? 'scale-125 animate-pulse brightness-125' : ''}`}
+                        style={{ backgroundColor: color, transform: isHolding ? 'scale(1.3)' : 'scale(1)' }}
+                    ></button>
+                    {isHolding && (
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-red-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter animate-bounce whitespace-nowrap">Release to Delete</div>
+                    )}
+                </div>
+            );
+        };
+
+        const ColorConfiguration = ({ selectedKey, setSelectedKey, keysData, onUpdate, baseConfig, setBaseConfig, customPalette, setCustomPalette }) => {
+            const currentKey = keysData.find(k => k.id === selectedKey);
+            const wheelRef = useRef(null);
+            const pressTimer = useRef(null);
+            const [activePaletteIndex, setActivePaletteIndex] = useState(null);
+
+            const hexToHSL = (hex) => {
+                let r = parseInt(hex.slice(1, 3), 16) / 255;
+                let g = parseInt(hex.slice(3, 5), 16) / 255;
+                let b = parseInt(hex.slice(5, 7), 16) / 255;
+                let max = Math.max(r, g, b), min = Math.min(r, g, b);
+                let h, s, l = (max + min) / 2;
+                if (max === min) h = s = 0;
+                else {
+                    let d = max - min;
+                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                    switch (max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                    }
+                    h /= 6;
+                }
+                return { h: h * 360, s: s * 100, l: l * 100 };
+            };
+
+            const hslToHex = (h, s, l) => {
+                l /= 100; s /= 100;
+                const a = s * Math.min(l, 1 - l);
+                const f = n => {
+                    const k = (n + h / 30) % 12;
+                    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                    return Math.round(255 * color).toString(16).padStart(2, '0');
+                };
+                return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+            };
+
+            const currentHSL = hexToHSL(currentKey.color);
+
+            const updateColor = (newHex) => {
+                onUpdate(selectedKey, { color: newHex });
+                if (activePaletteIndex !== null) {
+                    const newPalette = [...customPalette];
+                    newPalette[activePaletteIndex] = newHex;
+                    setCustomPalette(newPalette);
+                }
+            };
+
+            const handleWheelPick = (e) => {
+                const rect = wheelRef.current.getBoundingClientRect();
+                const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                const angle = Math.atan2(e.clientY - center.y, e.clientX - center.x) * (180 / Math.PI) + 90;
+                const hue = angle < 0 ? angle + 360 : angle;
+                updateColor(hslToHex(hue, currentHSL.s || 100, currentHSL.l || 50));
+            };
+
+            const handleSliderPick = (e, sliderRef) => {
+                const rect = sliderRef.current.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                updateColor(hslToHex(currentHSL.h, currentHSL.s, x * 100));
+            };
+
+            const [dragMode, setDragMode] = useState(null); // 'wheel' | 'slider'
+            const sliderRef = useRef(null);
+
+            useEffect(() => {
+                const handleGlobalMove = (e) => {
+                    if (dragMode === 'wheel') handleWheelPick(e);
+                    if (dragMode === 'slider') handleSliderPick(e, sliderRef);
+                };
+                const handleGlobalUp = () => setDragMode(null);
+                window.addEventListener('mousemove', handleGlobalMove);
+                window.addEventListener('mouseup', handleGlobalUp);
+                return () => {
+                    window.removeEventListener('mousemove', handleGlobalMove);
+                    window.removeEventListener('mouseup', handleGlobalUp);
+                };
+            }, [dragMode, currentHSL]);
+
+            const keyEffects = ['Static', 'Breathing', 'Pulse'];
+            const effects = [
+                { id: 'Static', icon: 'flare' },
+                { id: 'Breathing', icon: 'air' },
+                { id: 'Pulse', icon: 'favorite' },
+                { id: 'Cycle', icon: 'motion_photos_on' }
+            ];
+
+
+
+            return (
+                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Key Lighting Preview Grid */}
+                    <section className="mb-4 p-6 glass-card rounded-[2.5rem] shadow-2xl relative">
+                        <div className="grid grid-cols-3 gap-3">
+                            {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(id => {
+                                const key = keysData.find(k => k.id === id);
+                                return (
+                                    <div
+                                        key={id}
+                                        onClick={() => setSelectedKey(id)}
+                                        className={`relative aspect-square rounded-2xl border transition-all cursor-pointer flex items-center justify-center ${selectedKey === id
+                                            ? 'bg-black border-2'
+                                            : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                                        style={selectedKey === id ? { borderColor: key.color, boxShadow: `0 0 20px ${key.color}50` } : {}}
+                                    >
+                                        <div
+                                            className={`size-2 rounded-full transition-all ${key.lightingEffect === 'Breathing' ? 'animate-pulse' : key.lightingEffect === 'Pulse' ? 'scale-150 duration-75' : ''}`}
+                                            style={{
+                                                backgroundColor: key.color,
+                                                boxShadow: selectedKey === id ? `0 0 12px ${key.color}` : 'none',
+                                                opacity: (selectedKey === id ? 1 : 0.4) * (key.brightness / 100),
+                                                animationDuration: key.lightingEffect === 'Breathing' ? `${(101 - key.speed) / 25}s` : undefined
+                                            }}
+                                        ></div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+
+                    {/* Header Info */}
+                    <div className="flex items-center justify-between mb-4 px-1">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Lighting Configuration</h3>
+                        <span className="text-primary text-[10px] font-bold px-3 py-1 bg-primary/20 rounded-full border border-primary/30 uppercase tracking-tighter" style={{ color: currentKey.color, borderColor: `${currentKey.color}40`, backgroundColor: `${currentKey.color}10` }}>
+                            KEY {selectedKey} SELECTED
+                        </span>
+                    </div>
+
+                    <div className="space-y-6">
+                        {/* Updated Modern Color Picker Panel */}
+                        <div className="bg-card-dark border border-white/10 rounded-3xl p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Color Spectrum</h4>
+                                <div className="flex gap-1.5">
+                                    <div className="size-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+                                    <div className="size-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                                    <div className="size-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col md:flex-row gap-8">
+                                {/* Left Side: Circular Wheel */}
+                                <div className="relative flex flex-col items-center flex-shrink-0">
+                                    <div
+                                        className="relative size-32 mb-6"
+                                        ref={wheelRef}
+                                        onMouseDown={(e) => { setDragMode('wheel'); handleWheelPick(e); }}
+                                    >
+                                        {/* CSS-based Hue Wheel Donut */}
+                                        <div
+                                            className="absolute inset-0 rounded-full cursor-crosshair ring-1 ring-white/10"
+                                            style={{
+                                                background: 'conic-gradient(from 0deg, red, #ff0, lime, cyan, blue, #f0f, red)',
+                                                mask: 'radial-gradient(transparent 52%, black 53%)',
+                                                WebkitMask: 'radial-gradient(transparent 52%, black 53%)'
+                                            }}
+                                        ></div>
+                                        {/* Hue Selector Pin */}
+                                        <div
+                                            className="absolute inset-0 pointer-events-none transition-transform duration-75"
+                                            style={{ transform: `rotate(${currentHSL.h}deg)` }}
+                                        >
+                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 size-4 border-2 border-white rounded-full shadow-lg bg-transparent"></div>
+                                        </div>
+                                        {/* Central Selected Color */}
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div className="size-10 rounded-full shadow-2xl transition-all duration-300" style={{ backgroundColor: currentKey.color, boxShadow: `0 0 20px ${currentKey.color}80` }}></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Brightness/Saturation Slider */}
+                                    <div
+                                        ref={sliderRef}
+                                        onMouseDown={(e) => { setDragMode('slider'); handleSliderPick(e, sliderRef); }}
+                                        className="w-32 h-6 bg-black rounded-full p-1 relative overflow-hidden flex items-center shadow-inner border border-white/5 cursor-pointer"
+                                    >
+                                        <div className="absolute inset-0 opacity-80" style={{ background: `linear-gradient(to right, #000, ${hslToHex(currentHSL.h, 100, 50)}, #fff)` }}></div>
+                                        <div
+                                            className="absolute size-4 border-2 border-white rounded-full shadow-md z-10 transition-all pointer-events-none"
+                                            style={{ left: `${currentHSL.l}%`, transform: 'translateX(-50%)' }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                {/* Right Side: RGB + Palette */}
+                                <div className="flex-1 space-y-6">
+                                    {/* RGB Readout */}
+                                    <div className="space-y-2">
+                                        {[
+                                            { label: 'R', val: parseInt(currentKey.color.slice(1, 3), 16) || 0 },
+                                            { label: 'G', val: parseInt(currentKey.color.slice(3, 5), 16) || 0 },
+                                            { label: 'B', val: parseInt(currentKey.color.slice(5, 7), 16) || 0 }
+                                        ].map(chan => (
+                                            <div key={chan.label} className="flex items-center gap-4">
+                                                <span className="text-[10px] font-black text-slate-500 w-2">{chan.label}</span>
+                                                <span className="text-sm font-mono font-black text-slate-100">{chan.val}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Palette Header */}
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="text-[9px] font-black uppercase text-slate-600 tracking-widest">Saved Palette</p>
+                                        <span className="text-[8px] font-bold text-slate-500 italic">Hold to remove</span>
+                                    </div>
+
+                                    {/* Mini Palette Swatches */}
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {customPalette.map((color, idx) => (
+                                            <PaletteSwatch
+                                                key={`${color}-${idx}`}
+                                                color={color}
+                                                idx={idx}
+                                                isActive={activePaletteIndex === idx}
+                                                onSelect={(c, i) => { updateColor(c); setActivePaletteIndex(i); }}
+                                                onRemove={(i) => {
+                                                    setCustomPalette(customPalette.filter((_, index) => index !== i));
+                                                    setActivePaletteIndex(null);
+                                                }}
+                                                pressTimer={pressTimer}
+                                            />
+                                        ))}
+                                        {/* Add Button */}
+                                        <button
+                                            onClick={() => {
+                                                setCustomPalette([...customPalette, currentKey.color]);
+                                                setActivePaletteIndex(customPalette.length); // Link new swatch
+                                            }}
+                                            className="size-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:border-white/10 transition-colors cursor-pointer group"
+                                        >
+                                            <span className="material-symbols-outlined text-xs text-slate-500 group-hover:text-primary transition-colors">add</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Hex Input Area */}
+                                    <div className="relative group overflow-hidden bg-black border border-white/10 rounded-2xl p-3 flex items-center justify-between cursor-pointer">
+                                        <span className="text-[10px] font-mono font-black text-slate-300 tracking-wider">#{currentKey.color.replace('#', '')}</span>
+                                        <div className="size-4 rounded-md shadow-inner" style={{ backgroundColor: currentKey.color }}></div>
+                                        <input
+                                            type="color"
+                                            value={currentKey.color}
+                                            onChange={(e) => updateColor(e.target.value.toUpperCase())}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* KEY EFFECT SELECTION CARD */}
+                        <div className="bg-card-dark border border-white/10 rounded-3xl p-6">
+                            <div className="flex items-center justify-between mb-5">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Lighting Effect</h4>
+                                <span className="text-[8px] font-black text-primary px-2 py-0.5 bg-primary/20 rounded border border-primary/30 uppercase tracking-tighter" style={{ color: currentKey.color, borderColor: `${currentKey.color}40`, backgroundColor: `${currentKey.color}10` }}>{currentKey.lightingEffect}</span>
+                            </div>
+
+                            <div className="space-y-4">
+                                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest italic ml-1 mb-2">Select Motion Profile</p>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {keyEffects.map(fx => (
+                                        <button
+                                            key={fx}
+                                            onClick={() => onUpdate(selectedKey, { lightingEffect: fx })}
+                                            className={`py-6 rounded-2xl border transition-all flex flex-col items-center gap-3 ${currentKey.lightingEffect === fx ? 'bg-black border-2 shadow-[0_0_20px_rgba(255,255,255,0.05)]' : 'bg-white/5 border-white/5 opacity-40 hover:opacity-100 hover:bg-white/10'}`}
+                                            style={currentKey.lightingEffect === fx ? { borderColor: currentKey.color, boxShadow: `0 0 15px ${currentKey.color}20 inset` } : {}}
+                                        >
+                                            <span className="material-symbols-outlined text-[20px]" style={currentKey.lightingEffect === fx ? { color: currentKey.color, textShadow: `0 0 8px ${currentKey.color}` } : {}}>
+                                                {fx === 'Static' ? 'flare' : fx === 'Breathing' ? 'air' : 'favorite'}
+                                            </span>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${currentKey.lightingEffect === fx ? 'text-white' : 'text-slate-500'}`}>{fx}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Key specific Brightness & Speed */}
+                                <div className="mt-8 space-y-6 pt-6 border-t border-white/5">
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Key Brightness</label>
+                                            <span className="text-[9px] font-black" style={{ color: currentKey.color }}>{currentKey.brightness}%</span>
+                                        </div>
+                                        <input
+                                            className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                                            type="range"
+                                            min="0" max="100"
+                                            value={currentKey.brightness}
+                                            onChange={(e) => onUpdate(selectedKey, { brightness: parseInt(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Effect Speed</label>
+                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">
+                                                {currentKey.speed < 33 ? 'Slow' : currentKey.speed < 66 ? 'Normal' : 'Fast'}
+                                            </span>
+                                        </div>
+                                        <input
+                                            className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                                            type="range"
+                                            min="0" max="100"
+                                            value={currentKey.speed}
+                                            onChange={(e) => onUpdate(selectedKey, { speed: parseInt(e.target.value) })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Atmospheric Base Panel */}
+                        <div className="bg-card-dark border border-white/10 rounded-3xl p-6">
+                            <div className="flex items-center justify-between mb-5">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Atmospheric Base</h4>
+                                <span className="text-[9px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-md border border-primary/20 uppercase tracking-tighter">4-LED Underglow</span>
+                            </div>
+
+                            {/* Sync Toggle */}
+                            <div className="mb-8 p-4 bg-white/[0.03] border border-white/5 rounded-2xl flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div
+                                        className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 transition-all duration-300"
+                                        style={{
+                                            backgroundColor: baseConfig.sync ? `${currentKey.color}15` : '#04B2BA15',
+                                            borderColor: baseConfig.sync ? `${currentKey.color}30` : '#04B2BA30'
+                                        }}
+                                    >
+                                        <span
+                                            className="material-symbols-outlined text-xl transition-colors duration-300"
+                                            style={{ color: baseConfig.sync ? currentKey.color : '#04B2BA' }}
+                                        >
+                                            sync_alt
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-200">Sync with Active Key</p>
+                                        <p className="text-[9px] text-slate-500 font-medium italic mt-0.5">Matching base to active timer</p>
+                                    </div>
+                                </div>
+                                <div
+                                    onClick={() => setBaseConfig({ ...baseConfig, sync: !baseConfig.sync })}
+                                    className={`relative inline-block w-10 h-5 rounded-full cursor-pointer transition-colors duration-300 ${baseConfig.sync ? 'bg-primary/20 border border-primary/30' : 'bg-white/5 border border-white/10'}`}
+                                >
+                                    <div className={`absolute top-0.5 w-3.5 h-3.5 rounded-full shadow-sm transition-all duration-300 ${baseConfig.sync ? 'right-0.5 bg-primary neon-glow' : 'left-0.5 bg-slate-600'}`}></div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">Effects Library</p>
+                                        <span className={`text-[8px] font-bold italic opacity-80 uppercase tracking-tighter ${baseConfig.sync ? 'text-primary' : 'text-slate-600'}`}>
+                                            {baseConfig.sync ? 'Linked to Sync Profile' : 'Standalone Profile'}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {effects.map(effect => (
+                                            <button
+                                                key={effect.id}
+                                                onClick={() => setBaseConfig({ ...baseConfig, effect: effect.id })}
+                                                className={`rounded-xl py-3 px-4 flex flex-col items-center gap-1 transition-all group ${baseConfig.effect === effect.id ? 'bg-primary/20 border border-primary/40' : 'bg-white/5 border border-white/10 hover:bg-white/10'}`}
+                                            >
+                                                <span className={`material-symbols-outlined text-lg ${baseConfig.effect === effect.id ? 'text-primary' : 'text-slate-500'}`}>{effect.icon}</span>
+                                                <span className={`text-[9px] font-black uppercase tracking-wider ${baseConfig.effect === effect.id ? 'text-primary' : 'text-slate-500'}`}>{effect.id}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-5">
+                                    <div className={`flex items-center gap-3 overflow-x-auto no-scrollbar p-1 transition-opacity duration-300 ${baseConfig.sync ? 'opacity-40 grayscale pointer-events-none' : 'opacity-100'}`}>
+                                        {customPalette.map((color, idx) => (
+                                            <PaletteSwatch
+                                                key={`${color}-${idx}`}
+                                                color={color}
+                                                idx={idx}
+                                                isActive={baseConfig.color === color}
+                                                onSelect={(c) => setBaseConfig({ ...baseConfig, color: c })}
+                                                onRemove={(i) => setCustomPalette(customPalette.filter((_, index) => index !== i))}
+                                            />
+                                        ))}
+                                        <button
+                                            onClick={() => setCustomPalette([...customPalette, baseConfig.color])}
+                                            className="size-6 shrink-0 rounded-full border border-dashed border-white/20 flex items-center justify-center cursor-pointer hover:border-white/40 group"
+                                        >
+                                            <span className="material-symbols-outlined text-[14px] text-slate-600 group-hover:text-primary transition-colors">add</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-5">
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Brightness Intensity</label>
+                                                <span className="text-[9px] font-black text-primary">{baseConfig.brightness}%</span>
+                                            </div>
+                                            <input
+                                                className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                type="range"
+                                                min="0" max="100"
+                                                value={baseConfig.brightness}
+                                                onChange={(e) => setBaseConfig({ ...baseConfig, brightness: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Core Animation Speed</label>
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">
+                                                    {baseConfig.speed < 33 ? 'Slow' : baseConfig.speed < 66 ? 'Normal' : 'Fast'}
+                                                </span>
+                                            </div>
+                                            <input
+                                                className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                type="range"
+                                                min="0" max="100"
+                                                value={baseConfig.speed}
+                                                onChange={(e) => setBaseConfig({ ...baseConfig, speed: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+
+        const SoundConfiguration = ({ selectedKey, setSelectedKey, keysData, onUpdate, globalSettings, setGlobalSettings }) => {
+            const currentKey = keysData.find(k => k.id === selectedKey);
+            const [isSoundDropdownOpen, setIsSoundDropdownOpen] = React.useState(false);
+            const soundOptions = ['Digital Beep (Default)', 'Gentle Chime', 'Mechanical Click', 'Space Pulse'];
+
+            const handleUpdate = () => {
+                const btn = document.getElementById('update-sound-btn');
+                btn.innerText = 'SAVING...';
+                btn.classList.add('opacity-50');
+
+                setTimeout(() => {
+                    btn.innerText = 'KEY ' + selectedKey + ' UPDATED';
+                    btn.classList.remove('opacity-50');
+                    btn.classList.add('bg-white', 'text-black', 'neon-glow');
+                    setTimeout(() => {
+                        btn.innerText = 'UPDATE KEY ' + selectedKey;
+                        btn.classList.remove('bg-white', 'neon-glow');
+                        btn.classList.add('bg-primary');
+                    }, 2000);
+                }, 800);
+            };
+
+            const handleTestSound = () => {
+                const icon = document.getElementById(`speaker-icon-${selectedKey}`);
+                if (icon) {
+                    gsap.to(icon, {
+                        scale: 1.5,
+                        duration: 0.1,
+                        yoyo: true,
+                        repeat: 5,
+                        ease: "power1.inOut"
+                    });
+                }
+            };
+
+            const handleCustomSoundUpload = () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.mp3,.wav';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        onUpdate(selectedKey, { customSoundPath: file.name });
+                        alert(`Sound "${file.name}" uploaded for Key ${selectedKey}`);
+                    }
+                };
+                input.click();
+            };
+
+            return (
+                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Device View (Key Grid) */}
+                    <section>
+                        <div className="flex items-center justify-between mb-4 px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Device View</h3>
+                        </div>
+                        <div className="bg-card-dark p-6 glass-card rounded-[2.5rem] shadow-2xl relative">
+                            <div className="grid grid-cols-3 gap-3">
+                                {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(id => {
+                                    const key = keysData.find(k => k.id === id);
+                                    return (
+                                        <div
+                                            key={id}
+                                            onClick={() => setSelectedKey(id)}
+                                            className={`relative aspect-square rounded-2xl border transition-all cursor-pointer flex items-center justify-center ${selectedKey === id
+                                                ? 'bg-black border-2 neon-glow z-10'
+                                                : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                                            style={selectedKey === id ? { borderColor: '#04B2BA' } : {}}
+                                        >
+                                            <span className={`absolute top-2.5 left-2.5 text-[9px] font-black ${selectedKey === id ? 'text-primary' : 'text-slate-600'}`}>
+                                                {id}
+                                            </span>
+                                            <span
+                                                id={`speaker-icon-${id}`}
+                                                className={`material-symbols-outlined ${selectedKey === id ? 'text-primary neon-text' : 'text-slate-500'} text-xl transition-all duration-300`}
+                                                style={selectedKey === id ? { fontVariationSettings: "'FILL' 1" } : {}}
+                                            >
+                                                volume_up
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Sound Configuration */}
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Sound Configuration</h3>
+                            <span className="text-primary text-[9px] font-black px-3 py-1 bg-primary/10 rounded-full border border-primary/30 tracking-widest uppercase">
+                                KEY {selectedKey} SELECTED
+                            </span>
+                        </div>
+
+                        <div className="bg-card-dark border border-white/10 rounded-3xl p-6 space-y-6">
+                            {/* Hardware Status */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 italic">Hardware Status</label>
+                                <div
+                                    onClick={() => onUpdate(selectedKey, { soundEnabled: !currentKey.soundEnabled })}
+                                    className="flex items-center justify-between bg-black/40 border border-white/5 rounded-2xl px-5 py-4 cursor-pointer hover:bg-white/5 transition-all group"
+                                >
+                                    <div className="flex flex-col">
+                                        <span className="text-[11px] font-bold text-white uppercase tracking-wider">Physical Switch</span>
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">{currentKey.soundEnabled ? 'Audible Feedback Active' : 'Sound Output Muted'}</span>
+                                    </div>
+                                    <div className={`relative inline-flex h-6 w-11 items-center rounded-full border border-white/10 transition-colors ${currentKey.soundEnabled ? 'bg-primary/20 border-primary/30' : 'bg-white/10'}`}>
+                                        <span className={`inline-block h-4 w-4 transform rounded-full shadow-lg transition-transform duration-200 ${currentKey.soundEnabled ? 'translate-x-[22px] bg-primary neon-glow' : 'translate-x-1 bg-slate-500'}`}></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Notification Sounds */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 italic">Notification Sounds</label>
+                                <div className="relative">
+                                    <div
+                                        onClick={() => setIsSoundDropdownOpen(!isSoundDropdownOpen)}
+                                        className="w-full bg-black border border-white/10 rounded-2xl py-4 px-5 flex items-center justify-between cursor-pointer hover:border-white/20 transition-all group"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <span className="material-symbols-outlined text-slate-500 text-xl group-hover:text-primary transition-colors">brand_awareness</span>
+                                            <span className="text-[11px] font-black text-slate-200 uppercase tracking-wider">{currentKey.notificationSound}</span>
+                                        </div>
+                                        <span className={`material-symbols-outlined text-slate-600 transition-transform ${isSoundDropdownOpen ? 'rotate-180' : ''}`}>
+                                            {isSoundDropdownOpen ? 'expand_less' : 'expand_more'}
+                                        </span>
+                                    </div>
+
+                                    {isSoundDropdownOpen && (
+                                        <div className="absolute top-[110%] left-0 right-0 bg-black border border-white/10 rounded-2xl p-2 z-[100] border-b-2 border-b-primary shadow-[0_10px_20px_-10px_rgba(4,178,186,0.5)] animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="max-h-56 overflow-y-auto no-scrollbar space-y-0.5">
+                                                {soundOptions.map(option => (
+                                                    <div
+                                                        key={option}
+                                                        onClick={() => {
+                                                            onUpdate(selectedKey, { notificationSound: option });
+                                                            setIsSoundDropdownOpen(false);
+                                                        }}
+                                                        className="p-3 text-[10px] font-black text-slate-400 hover:bg-primary/10 hover:text-white rounded-xl cursor-pointer transition-all uppercase flex items-center gap-3"
+                                                    >
+                                                        <span className="size-1 rounded-full bg-primary shadow-[0_0_8px_#04B2BA]"></span>
+                                                        {option}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div
+                                    onClick={handleCustomSoundUpload}
+                                    className="border-2 border-dashed border-white/10 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 group cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all"
+                                >
+                                    <span className="material-symbols-outlined text-slate-500 group-hover:text-primary transition-colors">upload_file</span>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">{currentKey.customSoundPath || 'Upload Custom Sound'}</p>
+                                    <p className="text-[8px] text-slate-600 font-black uppercase tracking-tighter">MP3 or WAV, max 100kb</p>
+                                </div>
+                            </div>
+
+                            {/* Volume Control */}
+                            <div className="space-y-4 pt-4 border-t border-white/5">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 italic">Volume Control</label>
+                                    <span className="text-[10px] font-black text-primary neon-text">{currentKey.volume}%</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="material-symbols-outlined text-slate-500 text-lg">volume_mute</span>
+                                    <div className="flex-1 h-1.5 bg-white/10 rounded-full relative overflow-hidden">
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            value={currentKey.volume}
+                                            onChange={(e) => onUpdate(selectedKey, { volume: parseInt(e.target.value) })}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        />
+                                        <div className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_10px_#04B2BA]" style={{ width: `${currentKey.volume}%` }}></div>
+                                    </div>
+                                    <span className="material-symbols-outlined text-slate-500 text-lg">volume_up</span>
+                                </div>
+
+                                <button
+                                    onClick={handleTestSound}
+                                    className="w-full py-4 bg-black border border-white/10 text-primary font-black uppercase tracking-widest text-[9px] rounded-2xl flex items-center justify-center gap-2 hover:bg-white/5 active:scale-95 transition-all"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">play_circle</span>
+                                    Test Sound
+                                </button>
+                            </div>
+
+                            {/* Update Button */}
+                            <div className="pt-2">
+                                <button
+                                    id="update-sound-btn"
+                                    onClick={handleUpdate}
+                                    className="w-full py-5 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-3xl flex items-center justify-center shadow-lg active:scale-[0.98] transition-all hover:brightness-110"
+                                >
+                                    UPDATE KEY {selectedKey}
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Global Game Settings */}
+                    <section className="space-y-3">
+                        <div className="flex items-center justify-between px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1 italic">Global Game Settings</h3>
+                        </div>
+                        <div
+                            onClick={() => setGlobalSettings(prev => ({ ...prev, gameSounds: !prev.gameSounds }))}
+                            className="bg-card-dark border border-white/10 rounded-3xl px-6 py-5 cursor-pointer hover:bg-white/5 transition-all"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <label className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Game Sounds</label>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter mt-1">Neural Sync Engine</span>
+                                </div>
+                                <div className={`relative inline-flex h-6 w-11 items-center rounded-full border border-white/10 transition-colors ${globalSettings.gameSounds ? 'bg-primary/20 border-primary/30' : 'bg-white/10'}`}>
+                                    <span className={`inline-block h-4 w-4 transform rounded-full shadow-lg transition-transform duration-200 ${globalSettings.gameSounds ? 'translate-x-[22px] bg-primary neon-glow' : 'translate-x-1 bg-slate-500'}`}></span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            );
+        }
+
+        const DiscoConfiguration = ({ discoConfig, setDiscoConfig }) => {
+            const [audioLevels, setAudioLevels] = useState(new Array(10).fill(0));
+            const [gridLevels, setGridLevels] = useState(new Array(9).fill(0));
+            const [atmosLevels, setAtmosLevels] = useState(new Array(4).fill(0));
+            const audioCtxRef = useRef(null);
+            const analyzerRef = useRef(null);
+            const animationRef = useRef(null);
+
+            const colorModes = [
+                { id: 'static', label: 'Static Cyan', icon: 'palette' },
+                { id: 'rainbow', label: 'Dynamic Rainbow', icon: 'auto_fix_high' },
+                { id: 'bpm', label: 'BPM Pulse', icon: 'favorite' },
+                { id: 'spectrum', label: 'Spectrum Sync', icon: 'waves' }
+            ];
+
+            const startAudio = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = audioCtxRef.current.createMediaStreamSource(stream);
+                    analyzerRef.current = audioCtxRef.current.createAnalyser();
+                    analyzerRef.current.fftSize = 256;
+                    source.connect(analyzerRef.current);
+                    update();
+                } catch (err) {
+                    console.error("Audio access denied:", err);
+                }
+            };
+
+            const levelsBufferRef = useRef({
+                audio: new Array(10).fill(0),
+                grid: new Array(9).fill(0),
+                atmos: new Array(4).fill(0)
+            });
+
+            const update = () => {
+                if (!analyzerRef.current) return;
+                const dataArray = new Uint8Array(analyzerRef.current.frequencyBinCount);
+                analyzerRef.current.getByteFrequencyData(dataArray);
+
+                // Sensitivity: Multiplier for raw data
+                const sens = discoConfig.sensitivity / 100;
+
+                // Smoothing: Higher value = more weight to previous frame (0.0 to 0.99)
+                const smoothFactor = Math.min(0.99, discoConfig.smoothing / 100);
+                const invSmooth = 1 - smoothFactor;
+
+                // Function to apply smoothing
+                const smoothValue = (current, target) => (current * smoothFactor) + (target * invSmooth);
+
+                // Update Audio Levels (Equalizer)
+                const newLevels = levelsBufferRef.current.audio.map((prev, i) => {
+                    const target = (dataArray[i * 2] / 255) * 100 * sens;
+                    return smoothValue(prev, target);
+                });
+                levelsBufferRef.current.audio = newLevels;
+                setAudioLevels([...newLevels]);
+
+                // Update Grid Levels
+                const newGrid = levelsBufferRef.current.grid.map((prev, j) => {
+                    const target = (dataArray[j * 3 + 10] / 255) * sens;
+                    return smoothValue(prev, target);
+                });
+                levelsBufferRef.current.grid = newGrid;
+                setGridLevels([...newGrid]);
+
+                // Update Atmos Levels
+                const atmosBins = [15, 25, 35, 45];
+                const newAtmos = levelsBufferRef.current.atmos.map((prev, k) => {
+                    const rawVal = dataArray[atmosBins[k]] || 0;
+                    const target = (rawVal / 255) * sens;
+                    return smoothValue(prev, target);
+                });
+                levelsBufferRef.current.atmos = newAtmos;
+                setAtmosLevels([...newAtmos]);
+
+                animationRef.current = requestAnimationFrame(update);
+            };
+
+            useEffect(() => {
+                if (discoConfig.comboTrigger) {
+                    startAudio();
+                } else {
+                    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+                    if (audioCtxRef.current) audioCtxRef.current.close();
+                }
+                return () => {
+                    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+                    if (audioCtxRef.current) audioCtxRef.current.close();
+                };
+            }, [discoConfig.comboTrigger]);
+
+            const getDynamicColor = (index, type = 'primary') => {
+                if (discoConfig.colorMode === 'static') return '#04B2BA';
+                if (discoConfig.colorMode === 'rainbow') {
+                    const hue = (Date.now() / 20 + index * 20) % 360;
+                    return `hsl(${hue}, 100%, 50%)`;
+                }
+                if (discoConfig.colorMode === 'bpm') {
+                    const baseHue = 185; // Cyan
+                    const shift = audioLevels[0] * 0.5;
+                    return `hsl(${baseHue + shift}, 100%, 50%)`;
+                }
+                if (discoConfig.colorMode === 'spectrum') {
+                    const hue = (index / (type === 'grid' ? 9 : 10)) * 360;
+                    return `hsl(${hue}, 80%, 50%)`;
+                }
+                return '#04B2BA';
+            };
+
+            return (
+                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Visualizer Grid Section */}
+                    <section>
+                        <div className="bg-card-dark p-6 rounded-[2.5rem] border border-white/5 shadow-2xl">
+                            <div className="grid grid-cols-3 gap-3 mb-6">
+                                {gridLevels.map((level, i) => (
+                                    <div
+                                        key={i}
+                                        className="aspect-square rounded-xl transition-all duration-75"
+                                        style={{
+                                            backgroundColor: getDynamicColor(i, 'grid'),
+                                            opacity: level * 0.8 + 0.1,
+                                            boxShadow: level > 0.5 ? `0 0 15px ${getDynamicColor(i, 'grid')}80` : 'none',
+                                            transform: `scale(${1 + level * 0.1})`
+                                        }}
+                                    ></div>
+                                ))}
+                            </div>
+                            <div className="flex gap-2 h-6 mt-4">
+                                {atmosLevels.map((level, i) => (
+                                    <div
+                                        key={i}
+                                        className="flex-1 rounded-full transition-all duration-75"
+                                        style={{
+                                            backgroundColor: getDynamicColor(i, 'atmos'),
+                                            opacity: level * 0.9 + 0.2,
+                                            boxShadow: level > 0.1 ? `0 0 25px ${getDynamicColor(i, 'atmos')}` : 'none',
+                                            transform: `scaleY(${1 + level * 2.5})`, // Exaggerated scale for visibility
+                                            filter: `brightness(${1 + level * 2})`,
+                                            transformOrigin: 'center'
+                                        }}
+                                    ></div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Equalizer Section */}
+                    <section>
+                        <div className="flex items-center justify-between mb-4 px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Live Equalizer</h3>
+                            <div className="flex items-center gap-2">
+                                <span className={`size-1.5 rounded-full ${discoConfig.comboTrigger ? 'bg-primary animate-pulse' : 'bg-slate-700'}`}></span>
+                                <span className={`${discoConfig.comboTrigger ? 'text-primary neon-text' : 'text-slate-600'} text-[10px] font-bold uppercase tracking-wider`}>
+                                    {discoConfig.comboTrigger ? 'Sound Reactive: Active' : 'Sound Reactive: Off'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="bg-card-dark border border-white/10 rounded-[2.5rem] p-8 h-40 flex items-end justify-between gap-3 overflow-hidden">
+                            {audioLevels.map((level, i) => (
+                                <div
+                                    key={i}
+                                    className="equalizer-bar-modern flex-1 transition-all duration-75"
+                                    style={{
+                                        height: `${Math.max(10, level)}%`,
+                                        background: `linear-gradient(180deg, ${getDynamicColor(i)} 0%, ${getDynamicColor(i)}40 100%)`,
+                                        boxShadow: `0 0 12px ${getDynamicColor(i)}50`
+                                    }}
+                                ></div>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Key Combo Toggle */}
+                    <section>
+                        <div className="bg-card-dark border border-white/10 rounded-3xl p-6 shadow-xl">
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-200">1+7 Key Combo Trigger</label>
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight mt-0.5">Enable physical key activation</span>
+                                </div>
+                                <div
+                                    onClick={() => setDiscoConfig(prev => ({ ...prev, comboTrigger: !prev.comboTrigger }))}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full border border-white/10 transition-colors cursor-pointer ${discoConfig.comboTrigger ? 'bg-primary/20 border-primary/30' : 'bg-white/10'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full shadow-lg transition-transform duration-200 ${discoConfig.comboTrigger ? 'translate-x-[22px] bg-primary neon-glow' : 'translate-x-1 bg-slate-500'}`}></span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Color Modes */}
+                    <section className={`transition-all duration-300 ${!discoConfig.comboTrigger ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
+                        <div className="flex items-center mb-4 px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Color Mode</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            {colorModes.map(mode => (
+                                <button
+                                    key={mode.id}
+                                    onClick={() => setDiscoConfig(prev => ({ ...prev, colorMode: mode.id }))}
+                                    className={`bg-card-dark border rounded-3xl p-5 flex flex-col items-center gap-3 transition-all ${discoConfig.colorMode === mode.id ? 'border-primary shadow-[0_0_20px_rgba(4,178,186,0.3),inset_0_0_10px_rgba(4,178,186,0.1)]' : 'border-white/5 hover:border-white/10 hover:bg-white/5'}`}
+                                >
+                                    <div className={`size-12 rounded-xl flex items-center justify-center transition-all ${discoConfig.colorMode === mode.id ? 'bg-primary shadow-[0_0_15px_rgba(4,178,186,0.6)]' : 'bg-primary/10 border border-primary/20'}`}>
+                                        <span className={`material-symbols-outlined text-2xl ${discoConfig.colorMode === mode.id ? 'text-black' : 'text-primary'}`} style={discoConfig.colorMode === mode.id ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                                            {mode.icon}
+                                        </span>
+                                    </div>
+                                    <span className={`text-[10px] font-black uppercase tracking-wider text-center leading-tight ${discoConfig.colorMode === mode.id ? 'text-primary' : 'text-slate-400'}`}>
+                                        {mode.label}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Sliders */}
+                    <section className={`space-y-6 transition-all duration-300 ${!discoConfig.comboTrigger ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
+                        <div className="bg-card-dark border border-white/10 rounded-[2.5rem] p-8 space-y-10 shadow-2xl">
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-100">Sensitivity</label>
+                                    <span className="text-primary text-xs font-black neon-text">{discoConfig.sensitivity}%</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1 h-1.5 bg-white/10 rounded-full relative overflow-hidden">
+                                        <input
+                                            type="range"
+                                            min="0" max="100"
+                                            value={discoConfig.sensitivity}
+                                            onChange={(e) => setDiscoConfig(prev => ({ ...prev, sensitivity: parseInt(e.target.value) }))}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        />
+                                        <div className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_10px_#04B2BA]" style={{ width: `${discoConfig.sensitivity}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-100">Smoothing</label>
+                                    <span className="text-primary text-xs font-black neon-text">{discoConfig.smoothing}%</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1 h-1.5 bg-white/10 rounded-full relative overflow-hidden">
+                                        <input
+                                            type="range"
+                                            min="0" max="100"
+                                            value={discoConfig.smoothing}
+                                            onChange={(e) => setDiscoConfig(prev => ({ ...prev, smoothing: parseInt(e.target.value) }))}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        />
+                                        <div className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_10px_#04B2BA]" style={{ width: `${discoConfig.smoothing}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            );
+        };
+
+        const GamingConfiguration = ({ selectedKey, setSelectedKey, keysData, gamingConfig, setGamingConfig, customPalette, onUpdate }) => {
+            const currentKey = keysData.find(k => k.id === selectedKey);
+            const wheelRef = useRef(null);
+            const sliderRef = useRef(null);
+            const pressTimer = useRef(null);
+            const [activePaletteIndex, setActivePaletteIndex] = useState(null);
+            const [dragMode, setDragMode] = useState(null); // 'wheel' | 'slider'
+            const [isGaming, setIsGaming] = useState(false);
+            const [gameProgress, setGameProgress] = useState(0);
+
+            // Simon Says Logic
+            const [sequence, setSequence] = useState([]);
+            const [userSequence, setUserSequence] = useState([]);
+            const [isRepeating, setIsRepeating] = useState(false);
+            const [flashingKey, setFlashingKey] = useState(null);
+            const [gameStatus, setGameStatus] = useState('idle'); // idle, sequence, input, over
+            const [localLevel, setLocalLevel] = useState(1);
+            const [localScore, setLocalScore] = useState(0);
+            const gameTimeouts = useRef([]);
+
+            const clearTimeouts = () => {
+                gameTimeouts.current.forEach(clearTimeout);
+                gameTimeouts.current = [];
+            };
+
+            const stopGame = () => {
+                clearTimeouts();
+                setIsGaming(false);
+                setGameStatus('idle');
+                setFlashingKey(null);
+                setUserSequence([]);
+                setSequence([]);
+            };
+
+            // Resets palette editing when switching keys
+            useEffect(() => {
+                setActivePaletteIndex(null);
+            }, [selectedKey]);
+
+            const hexToHSL = (hex) => {
+                let r = parseInt(hex.slice(1, 3), 16) / 255;
+                let g = parseInt(hex.slice(3, 5), 16) / 255;
+                let b = parseInt(hex.slice(5, 7), 16) / 255;
+                let max = Math.max(r, g, b), min = Math.min(r, g, b);
+                let h, s, l = (max + min) / 2;
+                if (max === min) h = s = 0;
+                else {
+                    let d = max - min;
+                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                    switch (max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                    }
+                    h /= 6;
+                }
+                return { h: h * 360, s: s * 100, l: l * 100 };
+            };
+
+            const hslToHex = (h, s, l) => {
+                l /= 100; s /= 100;
+                const a = s * Math.min(l, 1 - l);
+                const f = n => {
+                    const k = (n + h / 30) % 12;
+                    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                    return Math.round(255 * color).toString(16).padStart(2, '0');
+                };
+                return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+            };
+
+            const currentHSL = hexToHSL(currentKey.color);
+
+            const updateColor = (newHex) => {
+                onUpdate(selectedKey, { color: newHex });
+                if (activePaletteIndex !== null) {
+                    const newPalette = [...customPalette];
+                    newPalette[activePaletteIndex] = newHex;
+                    setCustomPalette(newPalette);
+                }
+            };
+
+            const handleWheelPick = (e) => {
+                if (!wheelRef.current) return;
+                const rect = wheelRef.current.getBoundingClientRect();
+                const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                const angle = Math.atan2(e.clientY - center.y, e.clientX - center.x) * (180 / Math.PI) + 90;
+                const hue = angle < 0 ? angle + 360 : angle;
+                updateColor(hslToHex(hue, currentHSL.s || 100, currentHSL.l || 50));
+            };
+
+            const handleSliderPick = (e) => {
+                if (!sliderRef.current) return;
+                const rect = sliderRef.current.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                updateColor(hslToHex(currentHSL.h, currentHSL.s, x * 100));
+            };
+
+            useEffect(() => {
+                const handleGlobalMove = (e) => {
+                    if (dragMode === 'wheel') handleWheelPick(e);
+                    if (dragMode === 'slider') handleSliderPick(e);
+                };
+                const handleGlobalUp = () => setDragMode(null);
+                window.addEventListener('mousemove', handleGlobalMove);
+                window.addEventListener('mouseup', handleGlobalUp);
+                return () => {
+                    window.removeEventListener('mousemove', handleGlobalMove);
+                    window.removeEventListener('mouseup', handleGlobalUp);
+                };
+            }, [dragMode, currentHSL]);
+
+            const getGameTimings = () => {
+                const diff = gamingConfig.difficulty;
+                if (diff === 'Easy') return { flash: 500, interval: 900 };
+                if (diff === 'Insane') return { flash: 250, interval: 400 };
+                return { flash: 400, interval: 700 }; // Normal
+            };
+
+            const flashKey = (id) => {
+                const { flash } = getGameTimings();
+                setFlashingKey(id);
+                setTimeout(() => setFlashingKey(null), flash);
+            };
+
+            const playSequence = (seq) => {
+                const { interval } = getGameTimings();
+                setIsRepeating(true);
+                setGameStatus('sequence');
+                seq.forEach((id, index) => {
+                    const tId = setTimeout(() => {
+                        flashKey(id);
+                        if (index === seq.length - 1) {
+                            const finishId = setTimeout(() => {
+                                setIsRepeating(false);
+                                setGameStatus('input');
+                            }, interval / 2);
+                            gameTimeouts.current.push(finishId);
+                        }
+                    }, (index + 1) * interval);
+                    gameTimeouts.current.push(tId);
+                });
+            };
+
+            const startGame = () => {
+                const initialLevel = 1;
+                const firstKey = [7, 8, 9, 4, 5, 6, 1, 2, 3][Math.floor(Math.random() * 9)];
+                const newSeq = [firstKey];
+
+                setIsGaming(true);
+                setSequence(newSeq);
+                setUserSequence([]);
+                setLocalLevel(initialLevel);
+                setLocalScore(0);
+                setGameStatus('sequence');
+
+                // Start progress bar visual
+                gsap.to({ val: 0 }, {
+                    val: 100,
+                    duration: 1,
+                    onUpdate: function () { setGameProgress(this.targets()[0].val); }
+                });
+
+                setTimeout(() => playSequence(newSeq), 1500);
+            };
+
+            const handleKeyInput = (id) => {
+                if (gameStatus !== 'input' || isRepeating) return;
+
+                flashKey(id);
+                const newUserSeq = [...userSequence, id];
+                setUserSequence(newUserSeq);
+
+                const currentStep = newUserSeq.length - 1;
+                if (id !== sequence[currentStep]) {
+                    // WRONG KEY
+                    setGameStatus('over');
+                    setIsGaming(false);
+                    gsap.to(".react-root", { x: 5, repeat: 5, yoyo: true, duration: 0.05 });
+                    return;
+                }
+
+                if (newUserSeq.length === sequence.length) {
+                    // LEVEL COMPLETE
+                    const nextLevel = localLevel + 1;
+                    const nextScore = localScore + (gamingConfig.difficulty === 'Easy' ? 10 : (gamingConfig.difficulty === 'Normal' ? 25 : 50));
+
+                    setLocalLevel(nextLevel);
+                    setLocalScore(nextScore);
+                    setGamingConfig(prev => ({
+                        ...prev,
+                        level: Math.max(prev.level, nextLevel),
+                        highScore: Math.max(prev.highScore, nextScore)
+                    }));
+
+                    setGameStatus('sequence');
+                    setUserSequence([]);
+
+                    const nextKey = [7, 8, 9, 4, 5, 6, 1, 2, 3][Math.floor(Math.random() * 9)];
+                    const nextSeq = [...sequence, nextKey];
+                    setSequence(nextSeq);
+
+                    setTimeout(() => playSequence(nextSeq), 1000);
+                }
+            };
+
+            return (
+                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Neural Sync Preview Grid */}
+                    <section className="bg-card-dark p-6 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                        <div className="grid grid-cols-3 gap-3 relative z-10">
+                            {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(id => {
+                                const key = keysData.find(k => k.id === id);
+                                const isSelected = selectedKey === id;
+                                const isFlashing = flashingKey === id;
+                                // Only show active highlight if it's flashing (during game) OR if it's the selected key (outside game)
+                                const isActive = isFlashing || (!isGaming && isSelected);
+
+                                return (
+                                    <div
+                                        key={id}
+                                        onClick={() => {
+                                            if (isGaming) handleKeyInput(id);
+                                            else setSelectedKey(id);
+                                        }}
+                                        className={`relative aspect-square rounded-2xl border transition-all duration-300 cursor-pointer flex items-center justify-center ${isActive ? 'bg-black border-2' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                                        style={isActive ? {
+                                            borderColor: key.color,
+                                            boxShadow: `0 0 ${isFlashing ? '40px' : '20px'} ${key.color}${isFlashing ? '80' : '40'}`,
+                                            transform: isFlashing ? 'scale(1.05)' : 'scale(1)'
+                                        } : {}}
+                                    >
+                                        <span className="absolute top-2.5 left-2.5 text-[9px] font-black transition-colors duration-300" style={{ color: isActive ? key.color : '#475569' }}>{id}</span>
+                                        <div
+                                            className={`rounded-full transition-all duration-500 ${isActive ? 'size-3' : 'size-1.5 opacity-40'}`}
+                                            style={{
+                                                backgroundColor: key.color,
+                                                boxShadow: isActive ? `0 0 25px ${key.color}` : 'none'
+                                            }}
+                                        ></div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+
+                    {/* Dashboard */}
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Neural Sync Dashboard</h3>
+                            <div className="flex items-center gap-2">
+                                <span className="size-1.5 rounded-full bg-primary animate-pulse"></span>
+                                <span className="text-primary text-[9px] font-black uppercase tracking-widest">Core Sync: Active</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-card-dark border border-white/10 rounded-3xl p-6 flex flex-col justify-between h-32 hover:border-white/20 transition-all">
+                                <div>
+                                    <p className="text-[10px] font-black text-white uppercase tracking-widest mb-1">Combo Trigger</p>
+                                    <p className="text-[9px] text-slate-500 font-bold leading-tight uppercase tracking-tighter">Hold Keys {selectedKey} + 9</p>
+                                </div>
+                                <div className="flex justify-start">
+                                    <button
+                                        onClick={() => setGamingConfig({ ...gamingConfig, comboTrigger: !gamingConfig.comboTrigger })}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors border ${gamingConfig.comboTrigger ? 'bg-primary/20 border-primary/30' : 'bg-white/5 border-white/10'}`}
+                                    >
+                                        <span className={`inline-block h-4 w-4 transform rounded-full transition-transform duration-300 ${gamingConfig.comboTrigger ? 'translate-x-6 bg-primary neon-glow' : 'translate-x-1 bg-slate-600'}`}></span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-card-dark border border-white/10 rounded-3xl p-6 flex flex-col justify-between h-32 hover:border-white/20 transition-all">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest italic">High Score</span>
+                                        <span className="text-xl font-black text-primary leading-none neon-text">{gamingConfig.highScore}</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="block text-[8px] font-black text-slate-500 uppercase tracking-widest italic">Level</span>
+                                        <span className="text-xl font-black text-white leading-none">{(isGaming ? localLevel : gamingConfig.level).toString().padStart(2, '0')}</span>
+                                    </div>
+                                </div>
+                                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-primary shadow-[0_0_10px_#04B2BA]" style={{ width: '68%' }}></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={isGaming ? stopGame : startGame}
+                            className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] transition-all duration-500 relative overflow-hidden ${isGaming ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20' : 'bg-primary text-black hover:brightness-110 active:scale-[0.98] shadow-lg shadow-primary/20'}`}
+                        >
+                            {isGaming ? (
+                                <div className="relative z-10 flex items-center justify-center gap-3">
+                                    <span className="material-symbols-outlined text-sm animate-pulse">cancel</span>
+                                    ABORT NEURAL SYNC
+                                </div>
+                            ) : (
+                                <span className="relative z-10">{gameStatus === 'over' ? 'RE-INITIALIZE NEURAL SYNC' : 'INITIALIZE NEURAL SYNC'}</span>
+                            )}
+                            {isGaming && (
+                                <div className="absolute bottom-0 left-0 h-1 bg-red-500 transition-all duration-100" style={{ width: `${gameProgress}%` }}></div>
+                            )}
+                        </button>
+                    </section>
+
+                    {/* Settings Area */}
+                    <section className="space-y-4">
+                        <div className="px-1">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Game Configuration</h3>
+                        </div>
+
+                        <div className="bg-card-dark border border-white/10 rounded-[2.5rem] p-8 space-y-10">
+                            <div className="space-y-5">
+                                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Difficulty Matrix</label>
+                                <div className="flex p-1.5 bg-black/40 rounded-2xl border border-white/5 w-full">
+                                    {['Easy', 'Normal', 'Insane'].map(diff => (
+                                        <button
+                                            key={diff}
+                                            onClick={() => setGamingConfig({ ...gamingConfig, difficulty: diff })}
+                                            className={`flex-1 py-3 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${gamingConfig.difficulty === diff ? 'bg-primary text-black shadow-lg shadow-primary/20 scale-[1.02]' : 'text-slate-500 hover:text-slate-300'}`}
+                                        >
+                                            {diff}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-6 pt-6 border-t border-white/5">
+                                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Chromance Sync</label>
+                                <div className="flex flex-col md:flex-row items-center gap-10">
+                                    <div className="relative flex flex-col items-center flex-shrink-0">
+                                        <div
+                                            className="relative size-32 mb-6"
+                                            ref={wheelRef}
+                                            onMouseDown={(e) => { setDragMode('wheel'); handleWheelPick(e); }}
+                                        >
+                                            {/* CSS-based Hue Wheel Donut */}
+                                            <div
+                                                className="absolute inset-0 rounded-full cursor-crosshair ring-1 ring-white/10"
+                                                style={{
+                                                    background: 'conic-gradient(from 0deg, red, #ff0, lime, cyan, blue, #f0f, red)',
+                                                    mask: 'radial-gradient(transparent 52%, black 53%)',
+                                                    WebkitMask: 'radial-gradient(transparent 52%, black 53%)'
+                                                }}
+                                            ></div>
+                                            {/* Hue Selector Pin */}
+                                            <div
+                                                className="absolute inset-0 pointer-events-none transition-transform duration-75"
+                                                style={{ transform: `rotate(${currentHSL.h}deg)` }}
+                                            >
+                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 size-4 border-2 border-white rounded-full shadow-lg bg-transparent"></div>
+                                            </div>
+                                            {/* Central Selected Color */}
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                <div className="size-10 rounded-full shadow-2xl transition-all duration-300" style={{ backgroundColor: currentKey.color, boxShadow: `0 0 20px ${currentKey.color}80` }}></div>
+                                            </div>
+                                        </div>
+
+                                        {/* Brightness/Saturation Slider */}
+                                        <div
+                                            ref={sliderRef}
+                                            onMouseDown={(e) => { setDragMode('slider'); handleSliderPick(e); }}
+                                            className="w-32 h-6 bg-black rounded-full p-1 relative overflow-hidden flex items-center shadow-inner border border-white/5 cursor-pointer"
+                                        >
+                                            <div className="absolute inset-0 opacity-80" style={{ background: `linear-gradient(to right, #000, ${hslToHex(currentHSL.h, 100, 50)}, #fff)` }}></div>
+                                            <div
+                                                className="absolute size-4 border-2 border-white rounded-full shadow-md z-10 transition-all pointer-events-none"
+                                                style={{ left: `${currentHSL.l}%`, transform: 'translateX(-50%)' }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1 space-y-6">
+                                        <div className="grid grid-cols-1 gap-1.5">
+                                            {['R', 'G', 'B'].map((comp, idx) => (
+                                                <div key={comp} className="flex items-center justify-between text-[11px] font-mono px-4 py-2 bg-black/40 rounded-xl border border-white/5 transition-colors hover:border-primary/30">
+                                                    <span className="text-slate-500 font-black">{comp}</span>
+                                                    <span className="text-white font-black">{parseInt(currentKey.color.slice(1 + idx * 2, 3 + idx * 2), 16) || 0}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[9px] font-black uppercase text-slate-600 tracking-widest">Saved Palette</p>
+                                            <span className="text-[8px] font-bold text-slate-500 italic">Hold to remove</span>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2.5">
+                                            {customPalette.map((color, idx) => (
+                                                <PaletteSwatch
+                                                    key={`${color}-${idx}`}
+                                                    color={color}
+                                                    idx={idx}
+                                                    isActive={activePaletteIndex === idx}
+                                                    onSelect={(c, i) => { updateColor(c); setActivePaletteIndex(i); }}
+                                                    onRemove={(i) => {
+                                                        const newPalette = customPalette.filter((_, index) => index !== i);
+                                                        setCustomPalette(newPalette);
+                                                        setActivePaletteIndex(null);
+                                                    }}
+                                                    pressTimer={pressTimer}
+                                                />
+                                            ))}
+                                            {/* Add Button */}
+                                            <button
+                                                onClick={() => {
+                                                    setCustomPalette([...customPalette, currentKey.color]);
+                                                    setActivePaletteIndex(customPalette.length); // Link new swatch
+                                                }}
+                                                className="size-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:border-white/20 transition-colors cursor-pointer group"
+                                            >
+                                                <span className="material-symbols-outlined text-xs text-slate-500 group-hover:text-primary transition-colors">add</span>
+                                            </button>
+                                        </div>
+
+                                        {/* Hex Input Area */}
+                                        <div className="relative group overflow-hidden bg-black border border-white/10 rounded-2xl p-3 flex items-center justify-between cursor-pointer mt-4">
+                                            <span className="text-[10px] font-mono font-black text-slate-300 tracking-wider">#{currentKey.color.replace('#', '')}</span>
+                                            <div className="size-4 rounded-md shadow-inner" style={{ backgroundColor: currentKey.color }}></div>
+                                            <input
+                                                type="color"
+                                                value={currentKey.color}
+                                                onChange={(e) => updateColor(e.target.value.toUpperCase())}
+                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            );
+        };
+
+        const ProfileModal = ({ isOpen, onClose, onSave, profile, mode }) => {
+            const [name, setName] = useState('');
+            const [subtext, setSubtext] = useState('');
+
+            useEffect(() => {
+                if (isOpen) {
+                    if (profile && mode === 'edit') {
+                        setName(profile.name);
+                        setSubtext(profile.subtext);
+                    } else {
+                        setName('');
+                        setSubtext('');
+                    }
+                }
+            }, [profile, isOpen, mode]);
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-500" onClick={onClose}></div>
+                    <div className="bg-card-dark border border-white/10 rounded-[2.5rem] p-8 w-full max-w-xs relative z-10 animate-in zoom-in-95 fade-in duration-300 shadow-2xl">
+                        <div className="flex flex-col items-center mb-8">
+                            <div className="size-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-4 border border-primary/20">
+                                <span className="material-symbols-outlined text-primary text-3xl">{mode === 'add' ? 'add_circle' : 'edit_square'}</span>
+                            </div>
+                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">
+                                {mode === 'add' ? 'New Profile' : 'Edit Profile'}
+                            </h3>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Configure your workspace</p>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="space-y-2.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Profile Identity</label>
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="e.g. ULTRA FOCUS"
+                                    className="w-full bg-black/50 border border-white/10 rounded-2xl p-4 text-[13px] font-bold text-white focus:outline-none focus:border-primary/50 transition-all placeholder:text-slate-700"
+                                />
+                            </div>
+                            <div className="space-y-2.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Context / Subtext</label>
+                                <input
+                                    type="text"
+                                    value={subtext}
+                                    onChange={(e) => setSubtext(e.target.value)}
+                                    placeholder="e.g. Coding & Deep Work"
+                                    className="w-full bg-black/50 border border-white/10 rounded-2xl p-4 text-[13px] font-bold text-white focus:outline-none focus:border-primary/50 transition-all placeholder:text-slate-700"
+                                />
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    onClick={onClose}
+                                    className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 font-black uppercase tracking-widest text-[9px] text-slate-500 hover:bg-white/10 hover:text-slate-300 transition-all active:scale-95"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => onSave({ name, subtext })}
+                                    className="flex-1 py-4 rounded-2xl bg-primary text-black font-black uppercase tracking-widest text-[9px] shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all"
+                                >
+                                    {mode === 'add' ? 'Initialize' : 'Apply Changes'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+
+        const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, variant = 'danger' }) => {
+            if (!isOpen) return null;
+            const isDanger = variant === 'danger';
+            const themeColor = isDanger ? 'red-500' : 'primary';
+            const icon = isDanger ? 'delete_forever' : 'save_as';
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose}></div>
+                    <div className="bg-card-dark border border-white/10 w-full max-w-xs rounded-[2.5rem] p-8 relative shadow-2xl animate-in zoom-in duration-300">
+                        <div className="flex flex-col items-center text-center">
+                            <div className={`size-16 rounded-3xl bg-${themeColor}/10 flex items-center justify-center mb-6 border border-${themeColor}/20`}>
+                                <span className={`material-symbols-outlined text-${themeColor} text-3xl`}>{icon}</span>
+                            </div>
+                            <h3 className={`text-xs font-black uppercase tracking-[0.2em] text-white underline decoration-${themeColor}/50 underline-offset-4 mb-3`}>
+                                {title}
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter leading-relaxed mb-8 px-2">
+                                {message}
+                            </p>
+                            <div className="flex flex-col w-full gap-3">
+                                <button
+                                    onClick={() => { onConfirm(); onClose(); }}
+                                    className={`w-full py-4 rounded-2xl bg-${themeColor} text-${isDanger ? 'white' : 'black'} font-black uppercase tracking-widest text-[9px] shadow-lg shadow-${themeColor}/20 hover:brightness-110 active:scale-95 transition-all outline-none`}
+                                >
+                                    {isDanger ? 'Confirm Delete' : 'Update Profile'}
+                                </button>
+                                <button
+                                    onClick={onClose}
+                                    className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 font-black uppercase tracking-widest text-[9px] text-slate-500 hover:bg-white/10 hover:text-slate-300 transition-all active:scale-95 outline-none"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ProfileConfiguration = ({ profiles, onActivate, onSave, onAdd, onEdit, onDelete }) => {
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center justify-between mb-2 px-1">
+                        <div className="flex flex-col">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 italic">Profiles Library</h3>
+                            <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">Manage Workspace Layouts</span>
+                        </div>
+                        <span className="text-primary text-[10px] font-bold px-3 py-1 bg-primary/10 rounded-full border border-primary/20">{profiles.length} TOTAL</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {profiles.map(profile => (
+                            <div
+                                key={profile.id}
+                                className={`bg-card-dark rounded-[2.5rem] p-5 border-2 transition-all duration-300 relative group cursor-pointer ${profile.active ? 'border-primary neon-glow z-10' : 'border-white/5 hover:border-white/10'}`}
+                                onClick={() => onActivate(profile.id)}
+                            >
+                                {profile.active && (
+                                    <span className="absolute top-4 right-4 bg-primary text-black text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase animate-in fade-in zoom-in z-30">Current</span>
+                                )}
+
+                                {/* Hover Controls */}
+                                <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0 z-20">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onEdit(profile); }}
+                                        className="size-7 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center hover:bg-primary/20 hover:border-primary/40 transition-all"
+                                        title="Rename Profile"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px] text-slate-400 hover:text-primary">edit</span>
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onSave(profile.id, e); }}
+                                        className="size-7 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all"
+                                        title="Save Current Setup to Profile"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px] text-slate-400 hover:text-emerald-500">save</span>
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onDelete(profile.id); }}
+                                        className="size-7 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500/40 transition-all"
+                                        title="Delete Profile"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px] text-slate-400 hover:text-red-500">delete</span>
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-1.5 mb-5 aspect-square relative z-10">
+                                    {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((id, i) => {
+                                        const key = profile.settings.keys.find(k => k.id === id);
+                                        return (
+                                            <div
+                                                key={id}
+                                                className={`rounded-md transition-all duration-500 group-hover:scale-110 ${profile.active && id === 5 ? 'shadow-[0_0_12px_rgba(4,178,186,0.6)]' : ''}`}
+                                                style={{ backgroundColor: key.color, opacity: profile.active ? 1 : 0.4 }}
+                                            ></div>
+                                        );
+                                    })}
+                                </div>
+                                <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors truncate pr-2">{profile.name}</h4>
+                                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight truncate">{profile.subtext}</p>
+                            </div>
+                        ))}
+                        <button
+                            onClick={onAdd}
+                            className="bg-transparent rounded-[2.5rem] border-2 border-dashed border-white/10 p-5 aspect-square flex flex-col items-center justify-center gap-3 active:scale-95 transition-all group overflow-hidden relative"
+                        >
+                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="size-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center group-hover:bg-primary/20 group-hover:border-primary/30 transition-all duration-300 relative z-10">
+                                <span className="material-symbols-outlined text-primary text-4xl">add</span>
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-primary transition-colors relative z-10">Add Profile</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const ActiveSlots = ({ keysData }) => {
+            const activeKeys = keysData.filter(k => k.active).slice(0, 3);
+            return (
+                <section className="mb-12">
+                    <div className="flex items-center justify-between mb-6 px-1">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 italic text-shadow-none">ACTIVE SLOTS</h3>
+                        <button className="text-primary text-[10px] font-black uppercase tracking-wider hover:underline transition-all">VIEW ALL</button>
+                    </div>
+                    <div className="space-y-4">
+                        {activeKeys.map(key => (
+                            <div key={key.id} className={`slot-item flex items-center gap-4 ${key.id === 1 ? (key.isBreak ? 'bg-amber-500/5 border-amber-500/20' : 'bg-primary/5 border-primary/20') : 'bg-white/5 border-white/5'} p-4 rounded-2xl transition-all hover:bg-white/10 group animate-in slide-in-from-bottom-2`}>
+                                <div className={`size-11 rounded-xl ${key.id === 1 ? (key.isBreak ? 'bg-amber-500 text-black' : 'bg-primary text-black') : 'bg-white/10 text-slate-300'} flex items-center justify-center font-black text-sm`}>{key.id}</div>
+                                <div className="flex-1">
+                                    <p className={`font-black ${key.id === 1 ? 'text-white' : 'text-slate-200'} text-[13px] leading-tight uppercase`}>{key.label}</p>
+                                    <p className={`text-[10px] ${key.id === 1 ? (key.isBreak ? 'text-amber-500' : 'text-primary') : 'text-slate-500'} font-bold tracking-wide mt-0.5 uppercase`}>
+                                        {key.mode === 'TIMER' ? (key.isBreak ? `${formatTime(key.remaining)} BREAK TIME` : `${formatTime(key.remaining)} REMAINING`) : (key.mode === 'ALARM' ? `${key.targetTime} AM` : 'ACTIVE')}
+                                    </p>
+                                </div>
+                                <span className={`material-symbols-outlined ${key.id === 1 ? (key.isBreak ? 'text-amber-500' : 'text-primary') : 'text-slate-500'} text-[22px]`} style={{ fontVariationSettings: "'FILL' 1" }}>{key.icon}</span>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            );
+        };
+
+        const BottomNav = ({ activeTab, onTabChange }) => {
+            const navItems = [
+                { id: 'keys', label: 'Keys', icon: 'keyboard' },
+                { id: 'color', label: 'Color', icon: 'palette' },
+                { id: 'sound', label: 'Sound', icon: 'volume_up' },
+                { id: 'disco', label: 'Disco', icon: 'auto_awesome' },
+                { id: 'gaming', label: 'Gaming', icon: 'sports_esports' },
+                { id: 'profile', label: 'Profiles', icon: 'dashboard' }
+            ];
+
+            return (
+                <nav className="absolute bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/5 px-4 pb-8 pt-4 z-50 shrink-0">
+                    <div className="flex justify-between items-center w-full">
+                        {navItems.map(item => (
+                            <button
+                                key={item.id}
+                                onClick={(e) => { e.preventDefault(); onTabChange(item.id); }}
+                                className={`flex flex-col items-center gap-1.5 transition-all duration-300 flex-1 ${activeTab === item.id ? 'text-primary' : 'text-slate-500'}`}
+                            >
+                                <div className={`size-10 flex items-center justify-center rounded-xl border transition-all duration-300 ${activeTab === item.id ? 'bg-primary/20 border-primary/20 neon-glow' : 'border-transparent'}`}>
+                                    <span className="material-symbols-outlined text-[20px]" style={activeTab === item.id ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                                        {item.icon}
+                                    </span>
+                                </div>
+                                <span className="text-[8px] font-black uppercase tracking-widest">{item.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </nav>
+            );
+        };
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('keys');
+            const [selectedKey, setSelectedKey] = useState(1);
+            const [keysData, setKeysData] = useState(INITIAL_KEYS);
+            const [customPalette, setCustomPalette] = useState(['#00C2FF', '#FF2D55', '#AF52DE', '#FF9500', '#5856D6']);
+            const [baseConfig, setBaseConfig] = useState({
+                sync: true,
+                effect: 'Static',
+                color: '#04B2BA',
+                brightness: 85,
+                speed: 50
+            });
+            const [globalSettings, setGlobalSettings] = useState({
+                gameSounds: true
+            });
+            const [discoConfig, setDiscoConfig] = useState({
+                comboTrigger: true,
+                colorMode: 'static',
+                sensitivity: 85,
+                smoothing: 42
+            });
+            const [gamingConfig, setGamingConfig] = useState({
+                difficulty: 'Normal',
+                level: 1,
+                highScore: 0,
+                comboTrigger: true
+            });
+            const [profiles, setProfiles] = useState(INITIAL_PROFILES);
+            const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+            const [profileModalMode, setProfileModalMode] = useState('add'); // 'add' | 'edit'
+            const [editingProfile, setEditingProfile] = useState(null);
+            const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+            const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', variant: 'danger', onConfirm: () => { } });
+
+            const appRef = useRef(null);
+
+            // GLOBAL TIMER LOOP
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setKeysData(prev => prev.map(key => {
+                        if (key.mode === 'TIMER' && key.active) {
+                            if (key.remaining > 0) {
+                                return { ...key, remaining: key.remaining - 1 };
+                            } else {
+                                // Timer reached zero
+                                if (key.recurrent) {
+                                    if (key.includeBreak) {
+                                        const nextIsBreak = !key.isBreak;
+                                        return {
+                                            ...key,
+                                            isBreak: nextIsBreak,
+                                            remaining: nextIsBreak ? key.breakDuration : key.workDuration
+                                        };
+                                    } else {
+                                        return { ...key, remaining: key.workDuration };
+                                    }
+                                } else {
+                                    return { ...key, active: false };
+                                }
+                            }
+                        }
+                        return key;
+                    }));
+                }, 1000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const updateKey = (id, newConfig) => {
+                setKeysData(prev => prev.map(k => k.id === id ? { ...k, ...newConfig } : k));
+            };
+
+            useEffect(() => {
+                // Initial Animations
+                const tl = gsap.timeline();
+                tl.from("header", { y: -50, opacity: 0, duration: 0.8, ease: "power3.out" })
+                    .from("#key-grid", { scale: 0.9, opacity: 0, duration: 0.8, ease: "power2.out" }, "-=0.4")
+                    .from("section:not(#key-grid)", { y: 30, opacity: 0, stagger: 0.2, duration: 0.6, ease: "power2.out" }, "-=0.4")
+                    .from("nav", { y: 50, opacity: 0, duration: 0.6, ease: "power2.out" }, "-=0.4")
+                    .to(".content-hidden", { opacity: 1, duration: 0 }); // Show at end
+            }, []);
+
+            return (
+                <div ref={appRef} className="flex flex-col h-full bg-black">
+                    <Header />
+                    <div className="scroll-container px-6 py-6" id="main-content">
+                        {activeTab === 'keys' ? (
+                            <React.Fragment>
+                                <KeyGrid selectedKey={selectedKey} setSelectedKey={setSelectedKey} keysData={keysData} />
+                                <KeyConfiguration selectedKey={selectedKey} keysData={keysData} onUpdate={updateKey} />
+                                <ActiveSlots keysData={keysData} />
+                            </React.Fragment>
+                        ) : activeTab === 'color' ? (
+                            <ColorConfiguration
+                                selectedKey={selectedKey}
+                                setSelectedKey={setSelectedKey}
+                                keysData={keysData}
+                                onUpdate={updateKey}
+                                baseConfig={baseConfig}
+                                setBaseConfig={setBaseConfig}
+                                customPalette={customPalette}
+                                setCustomPalette={setCustomPalette}
+                            />
+                        ) : activeTab === 'sound' ? (
+                            <SoundConfiguration
+                                selectedKey={selectedKey}
+                                setSelectedKey={setSelectedKey}
+                                keysData={keysData}
+                                onUpdate={updateKey}
+                                globalSettings={globalSettings}
+                                setGlobalSettings={setGlobalSettings}
+                            />
+                        ) : activeTab === 'disco' ? (
+                            <DiscoConfiguration
+                                discoConfig={discoConfig}
+                                setDiscoConfig={setDiscoConfig}
+                            />
+                        ) : activeTab === 'gaming' ? (
+                            <GamingConfiguration
+                                selectedKey={selectedKey}
+                                setSelectedKey={setSelectedKey}
+                                keysData={keysData}
+                                onUpdate={updateKey}
+                                gamingConfig={gamingConfig}
+                                setGamingConfig={setGamingConfig}
+                                customPalette={customPalette}
+                            />
+                        ) : activeTab === 'profile' ? (
+                            <ProfileConfiguration
+                                profiles={profiles}
+                                onActivate={(id) => {
+                                    const profile = profiles.find(p => p.id === id);
+                                    if (profile) {
+                                        setKeysData(JSON.parse(JSON.stringify(profile.settings.keys)));
+                                        setProfiles(prev => prev.map(p => ({ ...p, active: p.id === id })));
+                                    }
+                                }}
+                                onSave={(id, e) => {
+                                    setConfirmConfig({
+                                        title: 'Save Snapshot',
+                                        message: 'Overwrite this profile with your current workspace configuration?',
+                                        variant: 'success',
+                                        onConfirm: () => {
+                                            setProfiles(prev => prev.map(p => p.id === id ? { ...p, settings: { keys: JSON.parse(JSON.stringify(keysData)) } } : p));
+                                            // Visual feedback on the trigger button
+                                            const btn = e?.currentTarget;
+                                            if (btn) {
+                                                gsap.to(btn, { scale: 1.3, duration: 0.1, yoyo: true, repeat: 1, ease: "back.out(2)" });
+                                            }
+                                        }
+                                    });
+                                    setIsConfirmModalOpen(true);
+                                }}
+                                onAdd={() => { setProfileModalMode('add'); setEditingProfile(null); setIsProfileModalOpen(true); }}
+                                onEdit={(profile) => { setProfileModalMode('edit'); setEditingProfile(profile); setIsProfileModalOpen(true); }}
+                                onDelete={(id) => {
+                                    setConfirmConfig({
+                                        title: 'Delete Profile',
+                                        message: 'Are you sure you want to permanently remove this profile? This action cannot be undone.',
+                                        variant: 'danger',
+                                        onConfirm: () => {
+                                            setProfiles(prev => prev.filter(p => p.id !== id));
+                                        }
+                                    });
+                                    setIsConfirmModalOpen(true);
+                                }}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-64 text-slate-500 animate-in fade-in">
+                                <span className="material-symbols-outlined text-4xl mb-2 opacity-20">construction</span>
+                                <p className="text-[10px] font-black uppercase tracking-widest">{activeTab} tab is under construction</p>
+                            </div>
+                        )}
+                        {/* Spacer to push content above fixed bottom nav */}
+                        <div className="h-32"></div>
+                    </div>
+                    <BottomNav activeTab={activeTab} onTabChange={(tab) => {
+                        setActiveTab(tab);
+                        // Reset scroll when tab changes
+                        const container = document.querySelector('.scroll-container');
+                        if (container) container.scrollTop = 0;
+                    }} />
+
+                    {/* Modals */}
+                    <ProfileModal
+                        isOpen={isProfileModalOpen}
+                        onClose={() => setIsProfileModalOpen(false)}
+                        mode={profileModalMode}
+                        profile={editingProfile}
+                        onSave={(data) => {
+                            if (profileModalMode === 'add') {
+                                const newId = Math.max(...profiles.map(p => p.id), 0) + 1;
+                                setProfiles([...profiles, {
+                                    id: newId,
+                                    name: data.name || 'Untitled Profile',
+                                    subtext: data.subtext || 'Custom Config',
+                                    active: false,
+                                    settings: { keys: JSON.parse(JSON.stringify(keysData)) }
+                                }]);
+                            } else {
+                                setProfiles(prev => prev.map(p => p.id === editingProfile.id ? { ...p, name: data.name, subtext: data.subtext } : p));
+                            }
+                            setIsProfileModalOpen(false);
+                        }}
+                    />
+
+                    <ConfirmModal
+                        isOpen={isConfirmModalOpen}
+                        onClose={() => setIsConfirmModalOpen(false)}
+                        onConfirm={confirmConfig.onConfirm}
+                        title={confirmConfig.title}
+                        message={confirmConfig.message}
+                        variant={confirmConfig.variant}
+                    />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
