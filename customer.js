@@ -101,22 +101,35 @@ if (state.user) {
 // -------------------------------------------------------------
 firebase.auth().onAuthStateChanged((user) => {
     if (user) {
-        // User is signed in. Fetch from Firestore to get potential base64 photo
-        db.collection('users').doc(user.uid).get().then(doc => {
-            const data = doc.exists ? doc.data() : {};
-            state.user = {
-                uid: user.uid,
-                email: user.email,
-                name: data.name || user.displayName || user.email.split('@')[0],
-                photo: data.photo || user.photoURL,
-                phone: data.phone || user.phoneNumber
-            };
-            state.studentId = state.user.email;
-            localStorage.setItem('ncafe_user', JSON.stringify(state.user));
+        // SECURITY: Check if this user is a staff/admin member.
+        // Staff accounts live in 'staff_users', not 'users'.
+        // If a staff member's session is found here, boot them out.
+        db.collection('staff_users').where('email', '==', user.email).where('status', '==', 'active').limit(1).get().then(staffSnap => {
+            if (!staffSnap.empty) {
+                // This is a staff member trying to use the customer portal.
+                console.warn("Staff account detected in customer portal. Signing out.");
+                return firebase.auth().signOut().then(() => {
+                    showToast("Access Denied", "This portal is for customers only. Please use the Staff Portal.", "error");
+                });
+            }
 
-            // Update UI
-            const profileBtn = document.querySelector('header .rounded-full');
-            if (profileBtn || state.view === 'profile') render();
+            // Customer confirmed — fetch their profile from Firestore
+            return db.collection('users').doc(user.uid).get().then(doc => {
+                const data = doc.exists ? doc.data() : {};
+                state.user = {
+                    uid: user.uid,
+                    email: user.email,
+                    name: data.name || user.displayName || user.email.split('@')[0],
+                    photo: data.photo || user.photoURL,
+                    phone: data.phone || user.phoneNumber
+                };
+                state.studentId = state.user.email;
+                localStorage.setItem('ncafe_user', JSON.stringify(state.user));
+
+                // Update UI
+                const profileBtn = document.querySelector('header .rounded-full');
+                if (profileBtn || state.view === 'profile') render();
+            });
         });
     } else {
         // User is signed out.
