@@ -103,14 +103,15 @@ firebase.auth().onAuthStateChanged((user) => {
     if (user) {
         // SECURITY: Check if this user is a staff/admin member.
         // Staff accounts live in 'staff_users', not 'users'.
-        // If a staff member's session is found here, boot them out.
+        // If detected, do NOT sign them out (it would affect the staff portal too).
+        // Instead, simply don't load them as a customer — keep the portal in a logged-out state.
         db.collection('staff_users').where('email', '==', user.email).where('status', '==', 'active').limit(1).get().then(staffSnap => {
             if (!staffSnap.empty) {
-                // This is a staff member trying to use the customer portal.
-                console.warn("Staff account detected in customer portal. Signing out.");
-                return firebase.auth().signOut().then(() => {
-                    showToast("Access Denied", "This portal is for customers only. Please use the Staff Portal.", "error");
-                });
+                // Staff/admin session detected — silently ignore. Do NOT call signOut().
+                // The customer portal simply won't recognize them as a valid customer.
+                console.warn("Staff account detected in customer portal context. Ignoring.");
+                state.user = null;
+                return; // Stop processing — portal stays in logged-out state.
             }
 
             // Customer confirmed — fetch their profile from Firestore
