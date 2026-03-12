@@ -1412,14 +1412,20 @@ function renderStaffModal() {
                     </div>
                     ` : `
                     <div class="pt-4 border-t border-gray-100 dark:border-dark-border">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-[10px] font-black text-gray-400 dark:text-dark-muted uppercase tracking-tight">Security & Password</label>
+                            <button type="button" onclick="sendStaffResetEmail('${user.email}')" 
+                                ${!adminState.isStaffModalUnlocked ? 'disabled' : ''}
+                                class="text-[10px] font-black text-primary hover:text-orange-600 transition-colors uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">
+                                <i data-lucide="mail" class="w-3 h-3"></i>
+                                Send Reset Link
+                            </button>
+                        </div>
                         <div class="relative">
-                            <label class="block text-[10px] font-black text-gray-400 dark:text-dark-muted mb-1 uppercase tracking-tight">Set New Password</label>
-                            <input type="password" name="new_password" id="modal-password" placeholder="Leave blank to keep current" minlength="6" 
+                            <input type="password" name="new_password" id="modal-password" placeholder="Require Email Change to Modify" minlength="6" 
                                 ${!adminState.isStaffModalUnlocked ? 'disabled' : ''}
                                 class="w-full px-4 py-2 text-xs rounded-lg border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg focus:border-primary outline-none transition-all font-bold text-secondary dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
-                            ${user.email !== auth.currentUser.email && user.email !== 'admin@ncafe.com' ? `
-                                <p class="text-[10px] text-gray-400 mt-2 italic">Note: Changing a staff password requires setting a new email or recreating the account.</p>
-                            ` : ''}
+                            <p class="text-[9px] text-gray-400 mt-2 leading-relaxed">Passwords can only be force-changed if the email is also updated. Use <b>Send Reset Link</b> for existing emails.</p>
                         </div>
                     </div>
                     `}
@@ -1466,6 +1472,19 @@ window.unlockAccountSecurity = async function () {
     } else {
         showToast("Access Denied", "Incorrect PIN or verification cancelled.", "error");
     }
+};
+
+window.sendStaffResetEmail = function(email) {
+    if (!email) return;
+    
+    firebase.auth().sendPasswordResetEmail(email)
+        .then(() => {
+            showToast("Mail Sent", "Password reset instructions sent to: " + email, "success");
+        })
+        .catch(error => {
+            console.error("Reset Error:", error);
+            showToast("Mail Failed", "Could not send reset email: " + error.message, "error");
+        });
 };
 
 window.saveStaffAccount = async function (e) {
@@ -1530,6 +1549,15 @@ window.saveStaffAccount = async function (e) {
             }
             // CASE 2: Migrating / Re-creating STAFF (Another user)
             else if (newEmail !== email || newPassword) {
+                // SECURITY: If email is SAME, Firebase client SDK blocks password updates for other users.
+                if (newPassword && newEmail === email) {
+                    showToast("Security Limit", "For security, passwords for existing emails can only be changed via the 'Send Reset Link' button.", "warning");
+                    submitBtn.innerHTML = originalContent;
+                    submitBtn.disabled = false;
+                    lucide.createIcons();
+                    return;
+                }
+
                 // We use a secondary app to create the NEW version of the user
                 const appName = "MigrationApp_" + Date.now();
                 const migrationApp = firebase.initializeApp(firebaseConfig, appName);
