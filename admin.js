@@ -1414,18 +1414,26 @@ function renderStaffModal() {
                     <div class="pt-4 border-t border-gray-100 dark:border-dark-border">
                         <div class="flex items-center justify-between mb-2">
                             <label class="block text-[10px] font-black text-gray-400 dark:text-dark-muted uppercase tracking-tight">Security & Password</label>
-                            <button type="button" onclick="sendStaffResetEmail('${user.email}')" 
-                                ${!adminState.isStaffModalUnlocked ? 'disabled' : ''}
-                                class="text-[10px] font-black text-primary hover:text-orange-600 transition-colors uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">
-                                <i data-lucide="mail" class="w-3 h-3"></i>
-                                Send Reset Link
-                            </button>
+                            <div class="flex gap-3">
+                                <button type="button" onclick="sendStaffResetEmail('${user.email}')" 
+                                    ${!adminState.isStaffModalUnlocked ? 'disabled' : ''}
+                                    class="text-[10px] font-black text-primary hover:text-orange-600 transition-colors uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">
+                                    <i data-lucide="mail" class="w-3 h-3"></i>
+                                    Reset Link
+                                </button>
+                                <button type="button" onclick="initiateForceReset('${user.id}', '${user.email}')" 
+                                    ${!adminState.isStaffModalUnlocked ? 'disabled' : ''}
+                                    class="text-[10px] font-black text-red-500 hover:text-red-600 transition-colors uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">
+                                    <i data-lucide="zap" class="w-3 h-3"></i>
+                                    Force Reset
+                                </button>
+                            </div>
                         </div>
                         <div class="relative">
-                            <input type="password" name="new_password" id="modal-password" placeholder="Require Email Change to Modify" minlength="6" 
+                            <input type="password" name="new_password" id="modal-password" placeholder="Modification restricted for same email" readonly 
                                 ${!adminState.isStaffModalUnlocked ? 'disabled' : ''}
-                                class="w-full px-4 py-2 text-xs rounded-lg border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg focus:border-primary outline-none transition-all font-bold text-secondary dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <p class="text-[9px] text-gray-400 mt-2 leading-relaxed">Passwords can only be force-changed if the email is also updated. Use <b>Send Reset Link</b> for existing emails.</p>
+                                class="w-full px-4 py-2 text-xs rounded-lg border border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-bg focus:border-red-400 outline-none transition-all font-bold text-secondary dark:text-gray-400 disabled:opacity-50 cursor-not-allowed">
+                            <p class="text-[9px] text-gray-400 mt-2 leading-relaxed">System policy info: Use <b>Force Reset</b> if the staff member cannot receive emails.</p>
                         </div>
                     </div>
                     `}
@@ -1485,6 +1493,75 @@ window.sendStaffResetEmail = function(email) {
             console.error("Reset Error:", error);
             showToast("Mail Failed", "Could not send reset email: " + error.message, "error");
         });
+};
+
+window.initiateForceReset = async function(id, email) {
+    if (!confirm(`CAUTION: "Force Reset" will re-create this staff account to overwrite the password. This is useful for internal emails like '${email}' that cannot receive links.\n\nContinue?`)) return;
+
+    const newPassword = prompt("Enter the NEW password for this account:", "temppass123");
+    if (!newPassword || newPassword.length < 6) {
+        showToast("Invalid Password", "Password must be at least 6 characters.", "error");
+        return;
+    }
+
+    try {
+        // 1. Fetch current data to preserve it
+        const originalDoc = await db.collection('staff_users').doc(id).get();
+        if (!originalDoc.exists) throw new Error("Staff record not found.");
+        const data = originalDoc.data();
+
+        // 2. Clear old data from Firestore first (to avoid unique email collision in our checks)
+        await db.collection('staff_users').doc(id).delete();
+
+        // 3. Try to re-create the account
+        // We use a secondary app to avoid logging out the current admin
+        const appName = "ForceResetApp_" + Date.now();
+        const secondaryApp = firebase.initializeApp(firebaseConfig, appName);
+
+        let finalEmail = email;
+        let cred;
+
+        try {
+            cred = await secondaryApp.auth().createUserWithEmailAndPassword(finalEmail, newPassword);
+        } catch (authError) {
+            console.warn("Primary email creation failed:", authError);
+            if (authError.code === 'auth/email-already-in-use') {
+                const suffix = Math.floor(1000 + Math.random() * 9000);
+                const suggestedEmail = email.replace('@', `.pos${suffix}@`);
+                finalEmail = prompt(`Firebase still has '${email}' recorded as an active session. \n\nTo overwrite it, we must slightly change the email address. \n\nPlease confirm the new unique ID:`, suggestedEmail);
+                
+                if (!finalEmail) {
+                    // Rollback Firestore delete if cancelled
+                    await db.collection('staff_users').doc(id).set(data);
+                    showToast("Cancelled", "Reset aborted.", "warning");
+                    secondaryApp.delete();
+                    return;
+                }
+                cred = await secondaryApp.auth().createUserWithEmailAndPassword(finalEmail, newPassword);
+            } else {
+                throw authError;
+            }
+        }
+
+        // 4. Create new Firestore record
+        await db.collection('staff_users').doc(cred.user.uid).set({
+            ...data,
+            email: finalEmail,
+            lastLogin: Date.now()
+        });
+
+        // 5. Cleanup
+        await secondaryApp.auth().signOut();
+        await secondaryApp.delete();
+
+        showToast("Force Reset Complete", `Account '${finalEmail}' is now active with the new password.`, "success");
+        closeModal();
+        renderAdmin(); // Refresh list
+
+    } catch (error) {
+        console.error("Force Reset Error:", error);
+        showToast("Reset Failed", error.message, "error");
+    }
 };
 
 window.saveStaffAccount = async function (e) {
@@ -1551,7 +1628,7 @@ window.saveStaffAccount = async function (e) {
             else if (newEmail !== email || newPassword) {
                 // SECURITY: If email is SAME, Firebase client SDK blocks password updates for other users.
                 if (newPassword && newEmail === email) {
-                    showToast("Security Limit", "For security, passwords for existing emails can only be changed via the 'Send Reset Link' button.", "warning");
+                    showToast("Security Limit", "For security, passwords for existing emails must be changed via 'Force Reset' or 'Reset Link'.", "warning");
                     submitBtn.innerHTML = originalContent;
                     submitBtn.disabled = false;
                     lucide.createIcons();
