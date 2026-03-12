@@ -1646,6 +1646,14 @@ window.saveStaffAccount = async function (e) {
             } catch (err) {
                 // Cleanup if it failed
                 await secondaryApp.delete();
+                
+                if (err.code === 'auth/email-already-in-use') {
+                    showToast("Security Limit", "This email is still registered in Firebase from a previous session. Please use a different email (e.g., staff2a@ncafe.com) or contact support to clear the old session.", "error");
+                    submitBtn.innerHTML = originalContent;
+                    submitBtn.disabled = false;
+                    lucide.createIcons();
+                    return;
+                }
                 throw err;
             }
         }
