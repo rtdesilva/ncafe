@@ -1564,7 +1564,7 @@ const showCardModal = (orderId, total, subtotal, tax) => {
         const tryRealBackend = async () => {
             try {
                 // Silently check if backend is reachable
-                const response = await fetch("https://us-central1-ncafe-app.cloudfunctions.net/createStripeCheckout", {
+                const response = await fetch("https://us-central1-ncafe-test.cloudfunctions.net/createStripeCheckout", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ amount: total, orderId: orderId, email: state.user?.email || "guest@ncafe.com" })
