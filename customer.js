@@ -1579,7 +1579,7 @@ function renderAuth() {
 
         ${state.authMode === 'login' ? `
             <!-- Login Form -->
-            <form onsubmit="handleLogin(event)" class="space-y-4">
+            <form onsubmit="handleLogin(event)" class="space-y-4" novalidate>
                 <!-- Email -->
                 <div class="relative">
                     <label class="text-xs text-secondary dark:text-gray-300 font-bold mb-2 block ml-1 uppercase tracking-wider">Email Address</label>
@@ -1640,7 +1640,7 @@ function renderAuth() {
             </form>
         ` : `
             <!-- Register Form -->
-            <form onsubmit="handleRegister(event)" class="space-y-4">
+            <form onsubmit="handleRegister(event)" class="space-y-4" novalidate>
                 <!-- Name -->
                 <div class="relative">
                     <label class="text-xs text-secondary dark:text-gray-300 font-bold mb-2 block ml-1 uppercase tracking-wider">Full Name</label>
@@ -1837,7 +1837,7 @@ function renderProfileEdit() {
         </div>
 
         <!-- Edit Form -->
-        <form onsubmit="saveProfile(event)" class="p-6 pb-32 space-y-6 flex-1">
+        <form onsubmit="saveProfile(event)" class="p-6 pb-32 space-y-6 flex-1" novalidate>
             <!-- Name -->
             <div class="space-y-2">
                 <label class="text-xs text-secondary dark:text-gray-300 font-bold ml-1 uppercase tracking-wider">Name</label>
@@ -2139,12 +2139,38 @@ function togglePassword(inputId) {
     input.type = input.type === 'password' ? 'text' : 'password';
 }
 
+function validateEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
+
+function validatePhone(phone) {
+    // Basic Sri Lankan phone number validation (10 digits)
+    const re = /^\d{10}$/;
+    return re.test(phone.replace(/[\s-]/g, ''));
+}
+
 function handleLogin(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const email = formData.get('email');
     const password = formData.get('password');
     const remember = formData.get('remember');
+
+    if (!email) {
+        showToast("Email Required", "Please enter your email address.", "error");
+        return;
+    }
+
+    if (!validateEmail(email)) {
+        showToast("Invalid Email", "Please enter a valid email address.", "error");
+        return;
+    }
+
+    if (!password) {
+        showToast("Password Required", "Please enter your password.", "error");
+        return;
+    }
 
     // Firebase email/password login
     firebase.auth().signInWithEmailAndPassword(email, password)
@@ -2188,6 +2214,27 @@ function handleRegister(e) {
     const name = formData.get('name');
     const phone = formData.get('phone');
 
+    // Validation
+    if (name.trim().length < 3) {
+        showToast("Invalid Name", "Please enter your full name (at least 3 characters).", "error");
+        return;
+    }
+
+    if (!validateEmail(email)) {
+        showToast("Invalid Email", "Please enter a valid email address.", "error");
+        return;
+    }
+
+    if (!validatePhone(phone)) {
+        showToast("Invalid Phone", "Please enter a valid 10-digit phone number.", "error");
+        return;
+    }
+
+    if (password.length < 6) {
+        showToast("Weak Password", "Password must be at least 6 characters long.", "error");
+        return;
+    }
+
     // Firebase email/password registration
     firebase.auth().createUserWithEmailAndPassword(email, password)
         .then((userCredential) => {
@@ -2230,7 +2277,11 @@ function handleRegister(e) {
         })
         .catch((error) => {
             console.error('❌ Registration error:', error);
-            showToast("Sign Up Error", "Failed to create account. Check your details and try again.", "error");
+            if (error.code === 'auth/email-already-in-use') {
+                showToast("Sign Up Error", "This email is already registered.", "error");
+            } else {
+                showToast("Sign Up Error", "Failed to create account. Check your details and try again.", "error");
+            }
         });
 }
 
@@ -2299,58 +2350,90 @@ function handleForgotPassword(e) {
 }
 
 function loginWithFacebook() {
+    if (window.location.protocol === 'file:') {
+        showToast("Access Denied", "Social login doesn't work from file://. Please use a local server like Live Server.", "error");
+        return;
+    }
+
     const provider = new firebase.auth.FacebookAuthProvider();
     firebase.auth().signInWithPopup(provider)
         .then((result) => {
             const user = result.user;
-            state.user = {
-                uid: user.uid,
-                email: user.email,
-                name: user.displayName,
-                photo: user.photoURL
-            };
-            state.studentId = state.user.email; // Always set studentId
+            
+            // Sync with Firestore
+            db.collection('users').doc(user.uid).get().then(doc => {
+                if (!doc.exists) {
+                    db.collection('users').doc(user.uid).set({
+                        name: user.displayName,
+                        email: user.email,
+                        photo: user.photoURL,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                
+                state.user = {
+                    uid: user.uid,
+                    email: user.email,
+                    name: user.displayName,
+                    photo: user.photoURL
+                };
+                state.studentId = state.user.email;
 
-            // If user has items in cart, redirect to checkout
-            if (state.cart.length > 0) {
-                state.view = 'checkout';
-            } else {
-                state.view = 'home';
-            }
-
-            render();
+                if (state.cart.length > 0) {
+                    state.view = 'checkout';
+                } else {
+                    state.view = 'home';
+                }
+                render();
+            });
         })
         .catch((error) => {
             console.error('❌ Facebook login error:', error);
-            showToast("Update Error", "Failed to update profile. Please try again later.", "error");
+            showToast("Login Error", error.message, "error");
         });
 }
 
 function loginWithGoogle() {
+    if (window.location.protocol === 'file:') {
+        showToast("Access Denied", "Social login doesn't work from file://. Please use a local server like Live Server.", "error");
+        return;
+    }
+
     const provider = new firebase.auth.GoogleAuthProvider();
     firebase.auth().signInWithPopup(provider)
         .then((result) => {
             const user = result.user;
-            state.user = {
-                uid: user.uid,
-                email: user.email,
-                name: user.displayName,
-                photo: user.photoURL
-            };
-            state.studentId = state.user.email; // Always set studentId
 
-            // If user has items in cart, redirect to checkout
-            if (state.cart.length > 0) {
-                state.view = 'checkout';
-            } else {
-                state.view = 'home';
-            }
+            // Sync with Firestore
+            db.collection('users').doc(user.uid).get().then(doc => {
+                if (!doc.exists) {
+                    db.collection('users').doc(user.uid).set({
+                        name: user.displayName,
+                        email: user.email,
+                        photo: user.photoURL,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
 
-            render();
+                state.user = {
+                    uid: user.uid,
+                    email: user.email,
+                    name: user.displayName,
+                    photo: user.photoURL
+                };
+                state.studentId = state.user.email;
+
+                if (state.cart.length > 0) {
+                    state.view = 'checkout';
+                } else {
+                    state.view = 'home';
+                }
+                render();
+            });
         })
         .catch((error) => {
             console.error('❌ Google login error:', error);
-            showToast("Update Error", "Failed to update profile. Please try again later.", "error");
+            showToast("Login Error", error.message, "error");
         });
 }
 
@@ -2435,6 +2518,17 @@ function saveProfile(e) {
     const currentPassword = formData.get('currentPassword');
     const newPassword = formData.get('newPassword');
     const confirmPassword = formData.get('confirmPassword');
+
+    // Basic Validation
+    if (!newName || newName.trim().length < 3) {
+        showToast("Invalid Name", "Please enter your full name (at least 3 characters).", "error");
+        return;
+    }
+
+    if (!newPhone || !validatePhone(newPhone)) {
+        showToast("Invalid Phone", "Please enter a valid 10-digit phone number.", "error");
+        return;
+    }
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalBtnText = submitBtn.innerHTML;
