@@ -63,7 +63,7 @@ const state = {
     staffMode: false, // Toggle staff features
     staffTab: 'orders', // 'orders', 'scanner', 'stock'
     // User Auth
-    user: JSON.parse(localStorage.getItem('ncafe_user')) || null, // { email, name, photo, uid }
+    user: null, // Always start clean to let Firebase stabilize
     authMode: 'login', // 'login' or 'register'
     rememberMe: false,
     favorites: JSON.parse(localStorage.getItem('ncafe_favorites')) || [], // Array of item IDs that user has favorited
@@ -111,53 +111,7 @@ if (state.user) {
     state.studentId = state.user.email;
 }
 
-// -------------------------------------------------------------
-// AUTH STATE LISTENER (The Source of Truth)
-// -------------------------------------------------------------
-firebase.auth().onAuthStateChanged((user) => {
-    if (user) {
-        // SECURITY: Check if this user is a staff/admin member.
-        // Staff accounts live in 'staff_users', not 'users'.
-        // If detected, do NOT sign them out (it would affect the staff portal too).
-        // Instead, simply don't load them as a customer — keep the portal in a logged-out state.
-        db.collection('staff_users').where('email', '==', user.email).where('status', '==', 'active').limit(1).get().then(staffSnap => {
-            if (!staffSnap.empty) {
-                // Staff/admin session detected — silently ignore. Do NOT call signOut().
-                // The customer portal simply won't recognize them as a valid customer.
-                console.warn("Staff account detected in customer portal context. Ignoring.");
-                state.user = null;
-                return; // Stop processing — portal stays in logged-out state.
-            }
-
-            // Customer confirmed — fetch their profile from Firestore
-            return db.collection('users').doc(user.uid).get().then(doc => {
-                const data = doc.exists ? doc.data() : {};
-                state.user = {
-                    uid: user.uid,
-                    email: user.email,
-                    name: data.name || user.displayName || user.email.split('@')[0],
-                    photo: data.photo || user.photoURL,
-                    phone: data.phone || user.phoneNumber
-                };
-                state.studentId = state.user.email;
-                localStorage.setItem('ncafe_user', JSON.stringify(state.user));
-
-                // Update UI
-                const profileBtn = document.querySelector('header .rounded-full');
-                if (profileBtn || state.view === 'profile') render();
-            });
-        });
-    } else {
-        // User is signed out.
-        if (state.user) {
-            console.log("Firebase says logged out. Clearing local state.");
-            state.user = null;
-            state.studentId = '';
-            localStorage.removeItem('ncafe_user');
-            render(); // Re-render to show login button
-        }
-    }
-});
+// --- REPLACED BY CENTRALIZED LISTENER AT BOTTOM ---
 
 const app = document.getElementById('app');
 
@@ -2627,20 +2581,8 @@ function loginWithFacebook() {
                     });
                 }
                 
-                state.user = {
-                    uid: user.uid,
-                    email: user.email,
-                    name: user.displayName,
-                    photo: user.photoURL
-                };
-                state.studentId = state.user.email;
-
-                if (state.cart.length > 0) {
-                    state.view = 'checkout';
-                } else {
-                    state.view = 'home';
-                }
-                render();
+                // Centralized listener handles the state/view updates
+                console.log('✅ Facebook Login Success - Waiting for listener...');
             });
         })
         .catch((error) => {
@@ -2671,20 +2613,8 @@ function loginWithGoogle() {
                     });
                 }
 
-                state.user = {
-                    uid: user.uid,
-                    email: user.email,
-                    name: user.displayName,
-                    photo: user.photoURL
-                };
-                state.studentId = state.user.email;
-
-                if (state.cart.length > 0) {
-                    state.view = 'checkout';
-                } else {
-                    state.view = 'home';
-                }
-                render();
+                // Centralized listener handles the state/view updates
+                console.log('✅ Google Login Success - Waiting for listener...');
             });
         })
         .catch((error) => {
@@ -2941,23 +2871,50 @@ document.addEventListener('keypress', (e) => {
 // Listen to Firebase auth state changes - THE SINGLE SOURCE OF TRUTH
 firebase.auth().onAuthStateChanged((user) => {
     if (user) {
-        state.user = {
-            uid: user.uid,
-            email: user.email,
-            name: user.displayName || user.email.split('@')[0],
-            photo: user.photoURL
-        };
-        state.studentId = user.email; // Always set studentId
-        initChatListener(); // Start listening for messages
-        fetchWalletBalance(user.uid); // Load wallet balance
-        console.log("✅ User Session Restored:", state.user.email);
+        // 1. Staff Check (Customer portal security)
+        db.collection('staff_users').where('email', '==', user.email).where('status', '==', 'active').limit(1).get().then(staffSnap => {
+            if (!staffSnap.empty) {
+                console.warn("Staff account detected. Ignoring session in customer view.");
+                state.user = null;
+                render();
+                return;
+            }
+
+            // 2. Fetch/Restore User Profile
+            db.collection('users').doc(user.uid).get().then(doc => {
+                const data = doc.exists ? doc.data() : {};
+                state.user = {
+                    uid: user.uid,
+                    email: user.email,
+                    name: data.name || user.displayName || user.email.split('@')[0],
+                    photo: data.photo || user.photoURL,
+                    phone: data.phone || data.phoneNumber || ''
+                };
+                
+                state.studentId = state.user.email;
+                localStorage.setItem('ncafe_user', JSON.stringify(state.user));
+                
+                initChatListener(); // Start listening for messages
+                fetchWalletBalance(user.uid); // Load wallet balance
+                
+                // 3. Smart Routing
+                if (state.view === 'auth') {
+                   state.view = state.cart.length > 0 ? 'checkout' : 'home';
+                }
+                
+                console.log("✅ User Session Centralized:", state.user.email);
+                render();
+            });
+        });
     } else {
         state.user = null;
         state.walletBalance = 0;
         state.walletLoading = false;
-        console.log("ℹ️ No user session found.");
+        state.studentId = '';
+        localStorage.removeItem('ncafe_user');
+        console.log("ℹ️ No active session.");
+        render();
     }
-    render();
 });
 
 
