@@ -23,7 +23,12 @@ const staffState = {
     startDate: new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'),
     endDate: new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0'),
     homeFilter: 'all', // 'all', 'preparing', 'ready'
-    isDarkMode: localStorage.getItem('ncafe_staff_dark_mode') === 'true'
+    isDarkMode: localStorage.getItem('ncafe_staff_dark_mode') === 'true',
+    scanner: {
+        lastCode: null,
+        isProcessing: false,
+        cooldown: 3000
+    }
 };
 
 // INITIAL DARK MODE APPLY
@@ -908,9 +913,16 @@ function renderScanner() {
                 <!-- Video Feed -->
                 <video id="qr-video" class="w-full h-full object-cover" playsinline muted></video>
                 
-                <!-- Overlay -->
+                <!-- Scanner Overlay (The red line) -->
                 <div id="scanner-overlay" class="absolute inset-0 border-4 border-primary/50 rounded-3xl z-10 pointer-events-none hidden">
                     <div class="absolute inset-x-0 top-1/2 h-0.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-scan"></div>
+                </div>
+
+                <!-- NEW: Scanner Feedback Overlay (Full color flash) -->
+                <div id="scanner-feedback-overlay" class="absolute inset-0 z-30 pointer-events-none flex items-center justify-center opacity-0 transition-all duration-300 rounded-3xl">
+                    <div id="feedback-icon-container" class="transform scale-50 transition-transform duration-300">
+                        <!-- Icon injected by showScannerFeedback -->
+                    </div>
                 </div>
 
                 <!-- Placeholder / Start Button -->
@@ -1031,13 +1043,27 @@ window.handleValidScan = function (scannedText) {
     const resultContainer = document.getElementById('scan-result');
     if (!scannedText) return;
 
-    // Normalize
+    // 1. Normalize & Throttling
     const query = scannedText.trim();
+    
+    if (staffState.scanner.isProcessing) return;
+    if (staffState.scanner.lastCode === query) return;
+
+    // Lock for cooldown
+    staffState.scanner.isProcessing = true;
+    staffState.scanner.lastCode = query;
+
+    // Auto-unlock after 3 seconds
+    setTimeout(() => {
+        staffState.scanner.isProcessing = false;
+        staffState.scanner.lastCode = null;
+    }, staffState.scanner.cooldown);
 
     // Find Order
     const order = orders.find(o => o.id === query); // Exact match first
 
     if (!order) {
+        showScannerFeedback('error');
         resultContainer.innerHTML = `
             <div class="bg-red-50 p-4 rounded-xl border border-red-100 flex items-center gap-3 text-left animate-in slide-in-from-bottom-2">
                 <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 text-red-500">
@@ -1054,6 +1080,7 @@ window.handleValidScan = function (scannedText) {
     }
 
     // Render Found Order
+    showScannerFeedback('success');
     resultContainer.innerHTML = `
         <div class="bg-white dark:bg-dark-surface p-0 rounded-2xl border border-gray-200 dark:border-dark-border shadow-xl overflow-hidden text-left animate-in slide-in-from-bottom-4 zoom-in-95 transition-colors">
             <!-- Header -->
@@ -1101,6 +1128,45 @@ window.handleValidScan = function (scannedText) {
         </div>
     `;
     lucide.createIcons();
+};
+
+function showScannerFeedback(type) {
+    const overlay = document.getElementById('scanner-feedback-overlay');
+    const iconContainer = document.getElementById('feedback-icon-container');
+    if (!overlay || !iconContainer) return;
+
+    // Reset
+    overlay.className = 'absolute inset-0 z-30 pointer-events-none flex items-center justify-center transition-all duration-300 rounded-3xl opacity-100 scale-100';
+    
+    if (type === 'success') {
+        overlay.classList.add('bg-green-500/20', 'border-4', 'border-green-500');
+        iconContainer.innerHTML = `
+            <div class="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg animate-success-pop">
+                <i data-lucide="check" class="w-10 h-10"></i>
+            </div>
+        `;
+    } else {
+        overlay.classList.add('bg-red-500/20', 'border-4', 'border-red-500');
+        iconContainer.innerHTML = `
+            <div class="w-16 h-16 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg animate-shake">
+                <i data-lucide="x" class="w-10 h-10"></i>
+            </div>
+        `;
+    }
+
+    iconContainer.classList.remove('scale-50');
+    iconContainer.classList.add('scale-100');
+    lucide.createIcons();
+
+    // Fade out
+    setTimeout(() => {
+        overlay.classList.replace('opacity-100', 'opacity-0');
+        iconContainer.classList.replace('scale-100', 'scale-50');
+        setTimeout(() => {
+             overlay.classList.remove('bg-green-500/20', 'border-4', 'border-green-500', 'bg-red-500/20', 'border-red-500');
+             iconContainer.innerHTML = '';
+        }, 300);
+    }, 1500);
 }
 
 // Helper function to generate HTML for stock items
