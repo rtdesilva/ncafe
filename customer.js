@@ -70,7 +70,13 @@ const state = {
     isDarkMode: localStorage.getItem('ncafe_dark_mode') === 'true',
     // Wallet
     walletBalance: 0,
-    walletLoading: true
+    walletLoading: true,
+    // Demo Card
+    cardDetails: {
+        number: '',
+        expiry: '',
+        cvv: ''
+    },
 };
 
 // INITIAL DARK MODE APPLY
@@ -569,6 +575,57 @@ function renderPayment() {
                 </div>
             </button>
         </div>
+
+        ${state.paymentMethod === 'visa' ? `
+            <div class="bg-white dark:bg-dark-surface p-6 rounded-3xl border border-gray-100 dark:border-dark-border shadow-sm mb-8 animate-fade-in relative overflow-hidden transition-colors duration-300">
+                <div class="absolute top-0 right-0 p-4">
+                    <button onclick="useDemoCard()" class="text-[10px] font-black bg-primary/10 text-primary px-3 py-1.5 rounded-full uppercase tracking-widest hover:bg-primary hover:text-white transition-all active:scale-95 border border-primary/20">Test Card</button>
+                </div>
+                <h3 class="text-sm font-black text-secondary dark:text-gray-100 uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-green-500"></i>
+                    Secure Card Entry
+                </h3>
+                
+                <div class="space-y-5">
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 block ml-1">Card Number</label>
+                        <div class="bg-gray-50 dark:bg-dark-bg p-4 rounded-2xl border border-gray-100 dark:border-dark-border flex items-center gap-3 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                            <i data-lucide="credit-card" class="w-5 h-5 text-gray-300"></i>
+                            <input type="text" placeholder="#### #### #### ####" 
+                                class="bg-transparent border-none outline-none w-full text-base font-bold text-secondary dark:text-gray-100 placeholder:text-gray-300 tracking-widest"
+                                maxlength="19"
+                                value="${state.cardDetails.number}"
+                                oninput="handleCardInput('number', this.value)">
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 block ml-1">Expiry</label>
+                            <div class="bg-gray-50 dark:bg-dark-bg p-4 rounded-2xl border border-gray-100 dark:border-dark-border flex items-center gap-3 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                                <i data-lucide="calendar" class="w-5 h-5 text-gray-300"></i>
+                                <input type="text" placeholder="MM/YY" 
+                                    class="bg-transparent border-none outline-none w-full text-base font-bold text-secondary dark:text-gray-100 placeholder:text-gray-300 tracking-widest"
+                                    maxlength="5"
+                                    value="${state.cardDetails.expiry}"
+                                    oninput="handleCardInput('expiry', this.value)">
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 block ml-1">CVV</label>
+                            <div class="bg-gray-50 dark:bg-dark-bg p-4 rounded-2xl border border-gray-100 dark:border-dark-border flex items-center gap-3 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                                <i data-lucide="lock" class="w-5 h-5 text-gray-300"></i>
+                                <input type="password" placeholder="***" 
+                                    class="bg-transparent border-none outline-none w-full text-base font-bold text-secondary dark:text-gray-100 placeholder:text-gray-300 tracking-widest"
+                                    maxlength="3"
+                                    value="${state.cardDetails.cvv}"
+                                    oninput="handleCardInput('cvv', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        ` : ''}
         
         <button onclick="processPayment()" class="w-full bg-secondary dark:bg-primary text-white p-5 rounded-2xl font-bold text-lg flex items-center justify-between shadow-2xl shadow-secondary/20 dark:shadow-primary/20 active:scale-[0.98] transition-all hover:translate-y-[-2px]">
             <span>Complete Order</span>
@@ -1434,6 +1491,35 @@ function selectPayment(method) {
     render();
 }
 
+function handleCardInput(field, value) {
+    if (field === 'number') {
+        // Format: #### #### #### ####
+        value = value.replace(/\D/g, '').substring(0, 16);
+        value = value.match(/.{1,4}/g)?.join(' ') || value;
+    } else if (field === 'expiry') {
+        // Format: MM/YY
+        value = value.replace(/\D/g, '').substring(0, 4);
+        if (value.length > 2) {
+            value = value.substring(0, 2) + '/' + value.substring(2);
+        }
+    } else if (field === 'cvv') {
+        value = value.replace(/\D/g, '').substring(0, 3);
+    }
+    state.cardDetails[field] = value;
+    // We don't call render() here because it would break typing focus. 
+    // The inputs are controlled by their own 'value' attribute but updated in state.
+}
+
+function useDemoCard() {
+    state.cardDetails = {
+        number: '4242 4242 4242 4242',
+        expiry: '12/28',
+        cvv: '123'
+    };
+    render();
+    showToast("Demo Card Added", "Test details auto-filled 💳", "success");
+}
+
 async function processPayment() {
     // Final Store Status Check
     if (!window.systemSettings.isStoreOpen) {
@@ -1441,6 +1527,15 @@ async function processPayment() {
         state.view = 'home';
         render();
         return;
+    }
+
+    // Validation for Visa
+    if (state.paymentMethod === 'visa') {
+        const { number, expiry, cvv } = state.cardDetails;
+        if (number.length < 19 || expiry.length < 5 || cvv.length < 3) {
+            showToast("Payment Details", "Please enter valid card information 💳", "error");
+            return;
+        }
     }
 
     const orderId = 'ORD' + Date.now();
