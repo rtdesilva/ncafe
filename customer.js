@@ -1456,7 +1456,7 @@ async function processPayment() {
 
     const totalFormatted = total.toFixed(2);
     const merchantId = "1234474";
-    const merchantSecret = "4a8dCaL0XtE4DpZl6IAHv149bsQ6kl6Wt8gfClHM105q"; // Using the second code you provided, looks like a secret
+    const merchantSecret = "MzgxNTE2NTMxOTMzNTMzOTA3MjAzNDYxMzg0MDgwODU2NjQ4ODUz"; // Corrected Merchant Secret from dashboard
 
     // Hash Algorithm: md5( merchant_id + order_id + amount + currency + md5(merchant_secret).toUpperCase() ).toUpperCase()
     const hashedSecret = CryptoJS.MD5(merchantSecret).toString().toUpperCase();
