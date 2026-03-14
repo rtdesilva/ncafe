@@ -1453,7 +1453,18 @@ async function processPayment() {
     const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const tax = subtotal * (window.systemSettings.taxRate / 100);
     const total = subtotal + tax;
-    const showCardModal = (orderId, total, subtotal, tax, isTopUp = false) => {
+    // --- STRIPE FLOW ---
+    if (state.paymentMethod === 'visa') {
+        initiateStripeFlow(orderId, total, subtotal, tax, false);
+        return;
+    }
+
+    // Default flow (Wallet)
+    finalizeOrder(orderId, total, subtotal, tax);
+}
+
+// --- GLOBAL STRIPE LOGIC ---
+function showCardModal(orderId, total, subtotal, tax, isTopUp = false) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300';
     modal.id = 'stripe-card-modal';
@@ -1484,7 +1495,7 @@ async function processPayment() {
                         <div class="relative">
                             <input type="text" id="stripe-card-number" placeholder="4242 4242 4242 4242" maxlength="19"
                                 class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl px-4 py-4 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-secondary dark:text-gray-100 transition-all font-mono tracking-widest">
-                            <i data-lucide="credit-card" class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-100"></i>
+                            <i data-lucide="credit-card" class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
                         </div>
                     </div>
 
@@ -1522,7 +1533,6 @@ async function processPayment() {
     document.body.appendChild(modal);
     lucide.createIcons();
 
-    // Handle Demo Autofill
     const demoBtn = modal.querySelector('#stripe-demo-btn');
     demoBtn.onclick = () => {
         modal.querySelector('#stripe-card-number').value = '4242 4242 4242 4242';
@@ -1531,7 +1541,6 @@ async function processPayment() {
         showToast("Card Ready", "Test card filled! 💳", "success");
     };
 
-    // Handle Payment
     const payBtn = modal.querySelector('#stripe-pay-btn');
     const payText = modal.querySelector('#stripe-pay-text');
     const paySpinner = modal.querySelector('#stripe-pay-spinner');
@@ -1550,7 +1559,7 @@ async function processPayment() {
 
         setTimeout(() => {
             modal.remove();
-            showToast("Stripe Success", "Payment verified by Stripe Test Mode! ✅", "success");
+            showToast("Success", "Verified! ✅", "success");
             if (isTopUp) {
                 finalizeWalletTopUp(total);
             } else {
@@ -1560,37 +1569,25 @@ async function processPayment() {
     };
 };
 
-    // --- REAL STRIPE INTEGRATION (Backend Call) ---
-    if (state.paymentMethod === 'visa') {
-        const tryRealBackend = async () => {
-            try {
-                // Silently check if backend is reachable
-                const response = await fetch("https://us-central1-ncafe-test.cloudfunctions.net/createStripeCheckout", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ amount: total, orderId: orderId, email: state.user?.email || "guest@ncafe.com" })
-                });
+async function initiateStripeFlow(orderId, total, subtotal, tax, isTopUp = false) {
+    try {
+        const response = await fetch("https://us-central1-ncafe-test.cloudfunctions.net/createStripeCheckout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: total, orderId: orderId, email: state.user?.email || "guest@ncafe.com" })
+        });
 
-                const session = await response.json();
-                if (session.url) {
-                    showToast("Redirecting", "Connecting to Stripe... 💳", "info");
-                    window.location.href = session.url;
-                } else {
-                    throw new Error();
-                }
-            } catch (error) {
-                // Backend not deployed - show the high-fidelity demo modal silently
-                console.log("ℹ️ Backend not reached. Showing UI demo.");
-                showCardModal(orderId, total, subtotal, tax);
-            }
-        };
-
-        tryRealBackend();
-        return;
+        const session = await response.json();
+        if (session.url) {
+            showToast("Redirecting", "Connecting to Stripe... 💳", "info");
+            window.location.href = session.url;
+        } else {
+            throw new Error();
+        }
+    } catch (error) {
+        console.log("ℹ️ Backend not reached. Showing UI demo.");
+        showCardModal(orderId, total, subtotal, tax, isTopUp);
     }
-
-    // Default flow (Wallet)
-    finalizeOrder(orderId, total, subtotal, tax);
 }
 
 async function finalizeOrder(orderId, total, subtotal, tax) {
@@ -2552,8 +2549,8 @@ async function handleTopUp() {
 
     const orderId = 'TOPUP-' + Date.now();
     
-    // We reuse the showCardModal but with a flag or a specialized success callback
-    showCardModal(orderId, amount, amount, 0, true); 
+    // Support real backend + Demo modal
+    initiateStripeFlow(orderId, amount, amount, 0, true); 
 }
 
 async function finalizeWalletTopUp(amount) {
