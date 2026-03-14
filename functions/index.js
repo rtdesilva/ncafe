@@ -6,7 +6,10 @@ const cors = require("cors")({ origin: true });
 
 admin.initializeApp();
 
-exports.createStripeCheckout = functions.https.onRequest((req, res) => {
+// Correctly define the secret dependency so it's available in process.env
+exports.createStripeCheckout = functions
+  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .https.onRequest((req, res) => {
     cors(req, res, async () => {
         if (req.method !== "POST") {
             return res.status(405).send("Method Not Allowed");
