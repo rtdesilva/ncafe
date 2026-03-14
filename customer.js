@@ -1544,9 +1544,44 @@ const showCardModal = (orderId, total, subtotal, tax) => {
     };
 };
 
-    // --- STRIPE INTEGRATION (Real Account) ---
+    // --- REAL STRIPE INTEGRATION (Backend Call) ---
     if (state.paymentMethod === 'visa') {
-        showCardModal(orderId, total, subtotal, tax);
+        showToast("Order Processing", "Redirecting to secure Stripe Checkout... 💳", "info");
+        
+        try {
+            // Replace this URL with your actual Firebase Function URL once deployed
+            // For now, it points to the standard Region/Project pattern
+            const functionUrl = "https://us-central1-ncafe-app.cloudfunctions.net/createStripeCheckout";
+            
+            const response = await fetch(functionUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    amount: total,
+                    orderId: orderId,
+                    email: state.user?.email || "guest@ncafe.com"
+                })
+            });
+
+            const session = await response.json();
+
+            if (session.url) {
+                // Redirect user to the real Stripe Checkout page
+                window.location.href = session.url;
+            } else {
+                throw new Error(session.error || "Failed to create checkout session");
+            }
+        } catch (error) {
+            console.error("Stripe Redirect Error:", error);
+            showToast("Payment Error", "Could not connect to Stripe. Please try again later.", "error");
+            
+            // Fallback: Keep simulation or ask user to fix backend
+            console.log("⚠️ Backend not reached. Reverting to demonstration mode.");
+            setTimeout(() => {
+                showToast("Simulation Mode", "Since backend is not deployed, showing UI demo 🚀", "info");
+                showCardModal(orderId, total, subtotal, tax);
+            }, 1500);
+        }
         return;
     }
 
