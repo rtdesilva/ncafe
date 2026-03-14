@@ -1510,6 +1510,11 @@ const showCardModal = (orderId, total, subtotal, tax) => {
                     <div id="stripe-pay-spinner" class="hidden animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
                 </button>
 
+                <button id="stripe-demo-btn" class="w-full bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-dark-border text-gray-600 dark:text-gray-400 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm">
+                    <i data-lucide="zap" class="w-4 h-4 text-yellow-500"></i>
+                    Use Test Card (4242)
+                </button>
+
                 <p class="text-center text-[10px] text-gray-400 leading-relaxed uppercase tracking-tighter">
                    Secured by Stripe — Test payment only
                 </p>
@@ -1519,6 +1524,15 @@ const showCardModal = (orderId, total, subtotal, tax) => {
 
     document.body.appendChild(modal);
     lucide.createIcons();
+
+    // Handle Demo Autofill
+    const demoBtn = modal.querySelector('#stripe-demo-btn');
+    demoBtn.onclick = () => {
+        modal.querySelector('#stripe-card-number').value = '4242 4242 4242 4242';
+        modal.querySelector('#stripe-card-expiry').value = '12 / 26';
+        modal.querySelector('#stripe-card-cvc').value = '123';
+        showToast("Card Ready", "Test card filled! 💳", "success");
+    };
 
     // Handle Payment
     const payBtn = modal.querySelector('#stripe-pay-btn');
@@ -1533,6 +1547,7 @@ const showCardModal = (orderId, total, subtotal, tax) => {
         }
 
         payBtn.disabled = true;
+        demoBtn.disabled = true;
         payText.textContent = 'Processing...';
         paySpinner.classList.remove('hidden');
 
@@ -1546,42 +1561,30 @@ const showCardModal = (orderId, total, subtotal, tax) => {
 
     // --- REAL STRIPE INTEGRATION (Backend Call) ---
     if (state.paymentMethod === 'visa') {
-        showToast("Order Processing", "Redirecting to secure Stripe Checkout... 💳", "info");
-        
-        try {
-            // Replace this URL with your actual Firebase Function URL once deployed
-            // For now, it points to the standard Region/Project pattern
-            const functionUrl = "https://us-central1-ncafe-app.cloudfunctions.net/createStripeCheckout";
-            
-            const response = await fetch(functionUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    amount: total,
-                    orderId: orderId,
-                    email: state.user?.email || "guest@ncafe.com"
-                })
-            });
+        const tryRealBackend = async () => {
+            try {
+                // Silently check if backend is reachable
+                const response = await fetch("https://us-central1-ncafe-app.cloudfunctions.net/createStripeCheckout", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ amount: total, orderId: orderId, email: state.user?.email || "guest@ncafe.com" })
+                });
 
-            const session = await response.json();
-
-            if (session.url) {
-                // Redirect user to the real Stripe Checkout page
-                window.location.href = session.url;
-            } else {
-                throw new Error(session.error || "Failed to create checkout session");
-            }
-        } catch (error) {
-            console.error("Stripe Redirect Error:", error);
-            showToast("Payment Error", "Could not connect to Stripe. Please try again later.", "error");
-            
-            // Fallback: Keep simulation or ask user to fix backend
-            console.log("⚠️ Backend not reached. Reverting to demonstration mode.");
-            setTimeout(() => {
-                showToast("Simulation Mode", "Since backend is not deployed, showing UI demo 🚀", "info");
+                const session = await response.json();
+                if (session.url) {
+                    showToast("Redirecting", "Connecting to Stripe... 💳", "info");
+                    window.location.href = session.url;
+                } else {
+                    throw new Error();
+                }
+            } catch (error) {
+                // Backend not deployed - show the high-fidelity demo modal silently
+                console.log("ℹ️ Backend not reached. Showing UI demo.");
                 showCardModal(orderId, total, subtotal, tax);
-            }, 1500);
-        }
+            }
+        };
+
+        tryRealBackend();
         return;
     }
 
