@@ -20,6 +20,7 @@ let adminState = {
     inboxListener: null,
     activeChatListener: null,
     staffSearch: '', // Search query for staff
+    menuSearch: '', // Search query for menu
     editingStaffItem: null,
     modalStaffMode: 'add',
     isStaffModalUnlocked: false,
@@ -654,9 +655,16 @@ function updateAdminOrderStatus(id, status) {
 
 function renderMenuView() {
     const menuItems = DataStore.getMenu();
-    const filteredItems = adminState.selectedCategory === 'all'
-        ? menuItems
-        : menuItems.filter(item => item.category === adminState.selectedCategory);
+    const searchQuery = (adminState.menuSearch || '').toLowerCase();
+    
+    const filteredItems = menuItems.filter(item => {
+        const matchesCategory = adminState.selectedCategory === 'all' || item.category === adminState.selectedCategory;
+        const matchesSearch = !searchQuery || 
+            item.name.toLowerCase().includes(searchQuery) || 
+            (item.category && item.category.toLowerCase().includes(searchQuery)) ||
+            (item.subCategory && item.subCategory.toLowerCase().includes(searchQuery));
+        return matchesCategory && matchesSearch;
+    });
 
     return `
         <div class="bg-white dark:bg-dark-surface p-6 rounded-3xl border border-gray-100 dark:border-dark-border shadow-sm relative">
@@ -668,7 +676,11 @@ function renderMenuView() {
                
                 <div class="flex-1 w-full max-w-xl relative group">
                     <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-dark-muted group-focus-within:text-primary transition-colors"></i>
-                    <input type="text" placeholder="Search for food..." class="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-dark-bg/60 border border-gray-100 dark:border-dark-border rounded-2xl text-sm font-bold text-secondary dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600">
+                    <input type="text" 
+                        placeholder="Search for food..." 
+                        value="${adminState.menuSearch || ''}"
+                        oninput="updateMenuList(this.value)"
+                        class="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-dark-bg/60 border border-gray-100 dark:border-dark-border rounded-2xl text-sm font-bold text-secondary dark:text-gray-100 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600">
                 </div>
 
                 <button onclick="openAddModal()" class="shrink-0 bg-primary text-white px-6 py-3.5 rounded-2xl text-sm font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 active:scale-95 flex items-center gap-2">
@@ -724,6 +736,20 @@ function renderMenuView() {
             </div>
         </div>
     `;
+}
+
+function updateMenuList(query) {
+    adminState.menuSearch = query;
+    renderAdmin(); // Full Re-render to update counts and grid
+    
+    // Restore focus to search input
+    const searchInput = document.querySelector('input[placeholder="Search for food..."]');
+    if (searchInput) {
+        searchInput.focus();
+        const val = searchInput.value;
+        searchInput.value = '';
+        searchInput.value = val;
+    }
 }
 
 function renderOrdersView() {
