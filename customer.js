@@ -40,6 +40,15 @@ window.addEventListener('storage', () => { render(); });
 
 
 // STATE
+// Set explicit persistence (LOCAL means session is remembered across tabs/restarts)
+firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .then(() => {
+        console.log("✅ Auth persistence set to LOCAL");
+    })
+    .catch((error) => {
+        console.error("❌ Persistence Error:", error);
+    });
+
 const state = {
     cart: JSON.parse(localStorage.getItem('ncafe_cart')) || [],
     view: 'home', // 'home', 'item', 'checkout', 'payment', 'receipt', 'auth', 'profile', 'profile-edit', 'orders'
@@ -2929,19 +2938,7 @@ document.addEventListener('keypress', (e) => {
     if (staffCode.length > 10) staffCode = '';
 });
 
-// Check for saved user in localStorage
-const savedUser = localStorage.getItem('ncafe_user');
-if (savedUser) {
-    try {
-        state.user = JSON.parse(savedUser);
-        console.log('✅ User restored from localStorage');
-    } catch (e) {
-        console.error('Failed to parse saved user');
-    }
-}
-
-
-// Listen to Firebase auth state changes
+// Listen to Firebase auth state changes - THE SINGLE SOURCE OF TRUTH
 firebase.auth().onAuthStateChanged((user) => {
     if (user) {
         state.user = {
@@ -2953,10 +2950,12 @@ firebase.auth().onAuthStateChanged((user) => {
         state.studentId = user.email; // Always set studentId
         initChatListener(); // Start listening for messages
         fetchWalletBalance(user.uid); // Load wallet balance
-    } else if (!savedUser) {
+        console.log("✅ User Session Restored:", state.user.email);
+    } else {
         state.user = null;
         state.walletBalance = 0;
         state.walletLoading = false;
+        console.log("ℹ️ No user session found.");
     }
     render();
 });

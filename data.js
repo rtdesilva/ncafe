@@ -428,49 +428,9 @@ db.collection('settings').doc('general').onSnapshot((doc) => {
     };
 })();
 
-// FILE:/// ISOLATION FIX: Browsers completely isolate localStorage between file paths. 
-// We catch the role from the URL to bridge the gap.
-const urlParams = new URLSearchParams(window.location.search);
-
-// 1. TOP-LEVEL PARAM CONSUMPTION (Executes before any auth logic)
-const incomingRole = urlParams.get('role');
-const logoutSignal = urlParams.get('logout') === 'true';
-
-if (logoutSignal) {
-    console.log("Logout signal detected. Clearing local role...");
-    localStorage.removeItem('ncafe_user_role');
-}
-if (incomingRole) {
-    console.log("Incoming role detected:", incomingRole);
-    localStorage.setItem('ncafe_user_role', incomingRole);
-}
-
-// Clear URL params without reloading to keep a clean state
-if (incomingRole || logoutSignal) {
-    window.history.replaceState(null, '', window.location.pathname);
-}
-
-// 2. AUTHENTICATE & ROUTE
-auth.onAuthStateChanged((user) => {
-    // Handle Logout Logic inside Auth
-    if (logoutSignal && user && !user.isAnonymous) {
-        auth.signOut();
-    }
-
-    if (user) {
-        console.log("data.js: User session active globally:", user.email || 'Anonymously');
-    } else {
-        console.log("data.js: No globally active auth session found.");
-
-        // Auto-sign-in for customers if not on a restricted page or login page
-        const isRestrictedPage = window.location.pathname.includes('admin.html') || window.location.pathname.includes('staff.html');
-        const isLoginPage = window.location.pathname.includes('login.html');
-
-        if (!isRestrictedPage && !isLoginPage) {
-            auth.signInAnonymously().catch(console.error);
-        }
-    }
-});
+// --- SHARED UTILS ONLY ---
+// Global Firebase initialization happens above. 
+// No auth listeners here to avoid conflicts with portal scripts.
 
 // LOCAL CACHE FOR SYNCHRONOUS ACCESS
 let localOrders = [];
