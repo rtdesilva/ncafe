@@ -1467,8 +1467,10 @@ async function processPayment() {
 
     // Hash Algorithm: md5( merchant_id + order_id + amount + currency + md5(merchant_secret).toUpperCase() ).toUpperCase()
     const hashedSecret = CryptoJS.MD5(merchantSecret).toString().toUpperCase();
-    const hash = CryptoJS.MD5(merchantId + orderId + totalFormatted + "LKR" + hashedSecret).toString().toUpperCase();
+    const hashString = merchantId + orderId + totalFormatted + "LKR" + hashedSecret;
+    const hash = CryptoJS.MD5(hashString).toString().toUpperCase();
     
+    console.log("- Raw Hash String (DO NOT SHARE SECRET):", merchantId + orderId + totalFormatted + "LKR" + "[HIDDEN_SECRET_HASH]");
     console.log("- Generated Hash:", hash);
 
     // --- PAYHERE INTEGRATION ---
