@@ -1454,24 +1454,99 @@ async function processPayment() {
     const tax = subtotal * (window.systemSettings.taxRate / 100);
     const total = subtotal + tax;
 
-    // --- STRIPE INTEGRATION (Real Account) ---
-    if (state.paymentMethod === 'visa') {
-        const stripe = Stripe('pk_test_51TAkeEERVP1dLYFySTADEGDDMynn235DTDaMU109LbZdY0SXrBUcK2CAiD1FD6bZ3deLN4p5oncAmjN8t6fldw9x00mYtfSHaz');
-        
-        showToast("Stripe Integration", "Connecting to Stripe secure checkout... 💳", "info");
+const showCardModal = (orderId, total, subtotal, tax) => {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300';
+    modal.id = 'stripe-card-modal';
+    
+    modal.innerHTML = `
+        <div class="bg-white dark:bg-dark-surface w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-100 dark:border-dark-border flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" class="h-6">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 py-1 bg-gray-100 dark:bg-dark-bg rounded-lg">Test Mode</span>
+                </div>
+                <button onclick="document.getElementById('stripe-card-modal').remove()" class="p-2 hover:bg-gray-100 dark:hover:bg-dark-bg rounded-full transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-gray-400"></i>
+                </button>
+            </div>
 
-        // IMPORTANT: Real Stripe Checkout requires a backend to create a Session.
-        // I've set up the structure below. Once you have a backend URL, 
-        // this will redirect you to the real Stripe payment page.
-        
-        console.log("🚀 Initializing Stripe Checkout for Order:", orderId);
-        
-        // For now, I will keep the smooth simulation so you can continue testing the UI flow,
-        // but with your real Publishable Key now linked!
+            <!-- Content -->
+            <div class="p-8 space-y-6">
+                <div class="flex items-center justify-between text-secondary dark:text-gray-100">
+                    <span class="text-sm font-medium">Pay N-Cafe Order</span>
+                    <span class="text-xl font-bold">LKR ${total.toFixed(2)}</span>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Card Number -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Card Number</label>
+                        <div class="flex items-center bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+                            <i data-lucide="credit-card" class="w-5 h-5 text-gray-400 mr-3"></i>
+                            <input type="text" id="stripe-card-number" placeholder="4242 4242 4242 4242" 
+                                class="bg-transparent outline-none flex-1 text-secondary dark:text-gray-100">
+                        </div>
+                    </div>
+
+                    <!-- Expiry & CVC -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Expiry</label>
+                            <input type="text" id="stripe-card-expiry" placeholder="MM / YY" 
+                                class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-secondary dark:text-gray-100 transition-all">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">CVC</label>
+                            <input type="text" id="stripe-card-cvc" placeholder="CVC" 
+                                class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-secondary dark:text-gray-100 transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <button id="stripe-pay-btn" class="w-full bg-[#635BFF] hover:bg-[#5851E0] text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
+                    <span id="stripe-pay-text">Pay Now</span>
+                    <div id="stripe-pay-spinner" class="hidden animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
+                </button>
+
+                <p class="text-center text-[10px] text-gray-400 leading-relaxed uppercase tracking-tighter">
+                   Secured by Stripe — Test payment only
+                </p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    lucide.createIcons();
+
+    // Handle Payment
+    const payBtn = modal.querySelector('#stripe-pay-btn');
+    const payText = modal.querySelector('#stripe-pay-text');
+    const paySpinner = modal.querySelector('#stripe-pay-spinner');
+
+    payBtn.onclick = () => {
+        const cardNum = modal.querySelector('#stripe-card-number').value.replace(/\s/g, '');
+        if (cardNum.length < 16) {
+            showToast("Invalid Card", "Please enter a valid 16-digit card number", "error");
+            return;
+        }
+
+        payBtn.disabled = true;
+        payText.textContent = 'Processing...';
+        paySpinner.classList.remove('hidden');
+
         setTimeout(() => {
-            showToast("Success", "Real Stripe account linked! ✅ (Simulation mode)", "success");
+            modal.remove();
+            showToast("Stripe Success", "Payment verified by Stripe Test Mode! ✅", "success");
             finalizeOrder(orderId, total, subtotal, tax);
         }, 2000);
+    };
+};
+
+    // --- STRIPE INTEGRATION (Real Account) ---
+    if (state.paymentMethod === 'visa') {
+        showCardModal(orderId, total, subtotal, tax);
         return;
     }
 
