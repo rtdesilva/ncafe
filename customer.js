@@ -1456,11 +1456,20 @@ async function processPayment() {
 
     const totalFormatted = total.toFixed(2);
     const merchantId = "1234474";
-    const merchantSecret = "MzgxNTE2NTMxOTMzNTMzOTA3MjAzNDYxMzg0MDgwODU2NjQ4ODUz"; // Corrected Merchant Secret from dashboard
+    const merchantSecret = "MzgxNTE2NTMxOTMzNTMzOTA3MjAzNDYxMzg0MDgwODU2NjQ4ODUz";
+
+    // Debugging: Log configuration for troubleshooting
+    console.log("🛠️ PayHere Config Debug:");
+    console.log("- Domain:", window.location.hostname);
+    console.log("- Merchant ID:", merchantId);
+    console.log("- Order ID:", orderId);
+    console.log("- Amount:", totalFormatted);
 
     // Hash Algorithm: md5( merchant_id + order_id + amount + currency + md5(merchant_secret).toUpperCase() ).toUpperCase()
     const hashedSecret = CryptoJS.MD5(merchantSecret).toString().toUpperCase();
     const hash = CryptoJS.MD5(merchantId + orderId + totalFormatted + "LKR" + hashedSecret).toString().toUpperCase();
+    
+    console.log("- Generated Hash:", hash);
 
     // --- PAYHERE INTEGRATION ---
     if (state.paymentMethod === 'visa') {
