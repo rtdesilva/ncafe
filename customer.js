@@ -1454,18 +1454,27 @@ async function processPayment() {
     const tax = subtotal * (window.systemSettings.taxRate / 100);
     const total = subtotal + tax;
 
+    const totalFormatted = total.toFixed(2);
+    const merchantId = "1234474";
+    const merchantSecret = "4a8dCaL0XtE4DpZl6IAHv149bsQ6kl6Wt8gfClHM105q"; // Using the second code you provided, looks like a secret
+
+    // Hash Algorithm: md5( merchant_id + order_id + amount + currency + md5(merchant_secret).toUpperCase() ).toUpperCase()
+    const hashedSecret = CryptoJS.MD5(merchantSecret).toString().toUpperCase();
+    const hash = CryptoJS.MD5(merchantId + orderId + totalFormatted + "LKR" + hashedSecret).toString().toUpperCase();
+
     // --- PAYHERE INTEGRATION ---
     if (state.paymentMethod === 'visa') {
         const payment = {
             "sandbox": true,
-            "merchant_id": "1234474", // Real merchant ID provided by user
-            "return_url": window.location.href, // Required
-            "cancel_url": window.location.href, // Required
-            "notify_url": "https://your-server.com/notify", // Placeholder, ideally a Firebase cloud function
+            "merchant_id": merchantId,
+            "return_url": window.location.href,
+            "cancel_url": window.location.href,
+            "notify_url": "https://your-server.com/notify",
             "order_id": orderId,
             "items": "N-Cafe Order #" + orderId,
-            "amount": total.toFixed(2),
+            "amount": totalFormatted,
             "currency": "LKR",
+            "hash": hash,
             "first_name": state.user?.name?.split(' ')[0] || "Customer",
             "last_name": state.user?.name?.split(' ').slice(1).join(' ') || "Guest",
             "email": state.user?.email || "guest@ncafe.com",
