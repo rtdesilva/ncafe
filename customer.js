@@ -1453,8 +1453,7 @@ async function processPayment() {
     const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const tax = subtotal * (window.systemSettings.taxRate / 100);
     const total = subtotal + tax;
-
-const showCardModal = (orderId, total, subtotal, tax) => {
+    const showCardModal = (orderId, total, subtotal, tax, isTopUp = false) => {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300';
     modal.id = 'stripe-card-modal';
@@ -1475,26 +1474,24 @@ const showCardModal = (orderId, total, subtotal, tax) => {
             <!-- Content -->
             <div class="p-8 space-y-6">
                 <div class="flex items-center justify-between text-secondary dark:text-gray-100">
-                    <span class="text-sm font-medium">Pay N-Cafe Order</span>
+                    <span class="text-sm font-medium">${isTopUp ? 'Top Up N-Cafe Wallet' : 'Pay N-Cafe Order'}</span>
                     <span class="text-xl font-bold">LKR ${total.toFixed(2)}</span>
                 </div>
-
+                
                 <div class="space-y-4">
-                    <!-- Card Number -->
                     <div class="space-y-2">
                         <label class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Card Number</label>
-                        <div class="flex items-center bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-                            <i data-lucide="credit-card" class="w-5 h-5 text-gray-400 mr-3"></i>
-                            <input type="text" id="stripe-card-number" placeholder="4242 4242 4242 4242" 
-                                class="bg-transparent outline-none flex-1 text-secondary dark:text-gray-100">
+                        <div class="relative">
+                            <input type="text" id="stripe-card-number" placeholder="4242 4242 4242 4242" maxlength="19"
+                                class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl px-4 py-4 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-secondary dark:text-gray-100 transition-all font-mono tracking-widest">
+                            <i data-lucide="credit-card" class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-100"></i>
                         </div>
                     </div>
 
-                    <!-- Expiry & CVC -->
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-2">
-                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Expiry</label>
-                            <input type="text" id="stripe-card-expiry" placeholder="MM / YY" 
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Expiry Date</label>
+                            <input type="text" id="stripe-card-expiry" placeholder="MM / YY" maxlength="7"
                                 class="w-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-secondary dark:text-gray-100 transition-all">
                         </div>
                         <div class="space-y-2">
@@ -1506,7 +1503,7 @@ const showCardModal = (orderId, total, subtotal, tax) => {
                 </div>
 
                 <button id="stripe-pay-btn" class="w-full bg-[#635BFF] hover:bg-[#5851E0] text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
-                    <span id="stripe-pay-text">Pay Now</span>
+                    <span id="stripe-pay-text">${isTopUp ? 'Top Up Now' : 'Pay Now'}</span>
                     <div id="stripe-pay-spinner" class="hidden animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
                 </button>
 
@@ -1554,7 +1551,11 @@ const showCardModal = (orderId, total, subtotal, tax) => {
         setTimeout(() => {
             modal.remove();
             showToast("Stripe Success", "Payment verified by Stripe Test Mode! ✅", "success");
-            finalizeOrder(orderId, total, subtotal, tax);
+            if (isTopUp) {
+                finalizeWalletTopUp(total);
+            } else {
+                finalizeOrder(orderId, total, subtotal, tax);
+            }
         }, 2000);
     };
 };
@@ -1893,15 +1894,15 @@ function renderProfile() {
             <!-- N-Cafe Wallet Card -->
             <div class="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-3xl shadow-2xl shadow-orange-500/30 text-white mb-2">
                 <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-orange-200">N-Cafe Wallet</p>
-                        <p class="text-3xl font-black mt-1">
-                            ${state.walletLoading ? '<span class="text-xl opacity-70">Loading...</span>' : `LKR ${state.walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    <div class="flex-1">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-orange-100 mb-1 opacity-80">Wallet Balance</p>
+                        <p class="text-3xl font-black text-white flex items-baseline gap-1">
+                            LKR <span id="profile-wallet-balance" class="animate-pulse-slow">${state.walletBalance || 0}</span>
                         </p>
                     </div>
-                    <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                        <i data-lucide="wallet" class="w-8 h-8"></i>
-                    </div>
+                    <button onclick="renderTopUpModal()" class="w-12 h-12 bg-white/20 hover:bg-white/30 rounded-2xl flex items-center justify-center backdrop-blur-sm transition-all active:scale-90 group">
+                        <i data-lucide="plus-circle" class="w-6 h-6 text-white group-hover:scale-110 transition-transform"></i>
+                    </button>
                 </div>
                 <!-- Redeem Form -->
                 <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 mt-2">
@@ -2495,12 +2496,110 @@ function handleForgotPassword(e) {
     }
 }
 
+// --- WALLET TOP-UP ---
+function renderTopUpModal() {
+    const modal = document.createElement('div');
+    modal.id = 'topup-modal';
+    modal.className = 'fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-fade-in';
+    modal.innerHTML = `
+        <div class="bg-white dark:bg-dark-surface w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl animate-scale-in">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-8">
+                    <h3 class="text-xl font-black text-secondary dark:text-gray-100">Top Up Wallet</h3>
+                    <button onclick="document.getElementById('topup-modal').remove()" class="text-gray-400 hover:text-red-500 transition-colors">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="space-y-2 text-center">
+                        <p class="text-xs font-black text-gray-400 uppercase tracking-widest">Enter Amount (LKR)</p>
+                        <input type="number" id="topup-amount" value="1000" min="100" step="100"
+                            class="w-full text-center text-4xl font-black text-primary bg-transparent outline-none py-2 border-b-2 border-gray-100 dark:border-dark-border focus:border-primary transition-colors" />
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="document.getElementById('topup-amount').value = 500" class="py-3 bg-gray-50 dark:bg-dark-bg rounded-xl font-bold text-sm hover:bg-primary/10 transition-colors">500</button>
+                        <button onclick="document.getElementById('topup-amount').value = 1000" class="py-3 bg-gray-50 dark:bg-dark-bg rounded-xl font-bold text-sm hover:bg-primary/10 transition-colors">1k</button>
+                        <button onclick="document.getElementById('topup-amount').value = 5000" class="py-3 bg-gray-50 dark:bg-dark-bg rounded-xl font-bold text-sm hover:bg-primary/10 transition-colors">5k</button>
+                    </div>
+
+                    <button onclick="handleTopUp()" class="w-full bg-[#635BFF] text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3">
+                        <i data-lucide="shield-check" class="w-6 h-6"></i>
+                        Next: Stripe Payment
+                    </button>
+
+                    <p class="text-[10px] text-center text-gray-400 font-bold uppercase tracking-tighter">
+                        Powered by Stripe — Instant Reload
+                    </p>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    lucide.createIcons();
+}
+
+async function handleTopUp() {
+    const amount = parseInt(document.getElementById('topup-amount').value);
+    if (isNaN(amount) || amount < 100) {
+        showToast("Invalid Amount", "Minimum top up is LKR 100", "error");
+        return;
+    }
+
+    document.getElementById('topup-modal').remove();
+    showToast("Processing", "Initializing secure Stripe flow... 💳", "info");
+
+    const orderId = 'TOPUP-' + Date.now();
+    
+    // We reuse the showCardModal but with a flag or a specialized success callback
+    showCardModal(orderId, amount, amount, 0, true); 
+}
+
+async function finalizeWalletTopUp(amount) {
+    if (!state.user) return;
+
+    try {
+        const userRef = db.collection('users').doc(state.user.uid);
+        
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw "User not found";
+
+            const currentBalance = userDoc.data().walletBalance || 0;
+            const newBalance = currentBalance + amount;
+
+            transaction.update(userRef, { walletBalance: newBalance });
+
+            // Record transaction
+            const transRef = db.collection('wallet_transactions').doc();
+            transaction.set(transRef, {
+                userId: state.user.uid,
+                amount: amount,
+                type: 'credit',
+                method: 'stripe',
+                date: new Date().toISOString(),
+                description: 'Wallet Top-up via Stripe'
+            });
+        });
+
+        showToast("Wallet Updated", `Success! LKR ${amount} added to your wallet. 💰`, "success");
+        
+        // Refresh profile if viewing it
+        if (state.view === 'profile') {
+            render();
+        }
+    } catch (error) {
+        console.error("Top-up Error:", error);
+        showToast("Update Failed", "Could not update wallet balance. Please contact support.", "error");
+    }
+}
+
 function loginWithFacebook() {
     if (window.location.protocol === 'file:') {
         showToast("Access Denied", "Social login doesn't work from file://. Please use a local server like Live Server.", "error");
         return;
     }
-
     const provider = new firebase.auth.FacebookAuthProvider();
     firebase.auth().signInWithPopup(provider)
         .then((result) => {
