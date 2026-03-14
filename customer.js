@@ -2557,16 +2557,17 @@ async function finalizeWalletTopUp(amount) {
     if (!state.user) return;
 
     try {
-        const userRef = db.collection('users').doc(state.user.uid);
+        const walletRef = db.collection('wallets').doc(state.user.uid);
         
         await db.runTransaction(async (transaction) => {
-            const userDoc = await transaction.get(userRef);
-            if (!userDoc.exists) throw "User not found";
-
-            const currentBalance = userDoc.data().walletBalance || 0;
+            const walletDoc = await transaction.get(walletRef);
+            const currentBalance = walletDoc.exists ? (walletDoc.data().balance || 0) : 0;
             const newBalance = currentBalance + amount;
 
-            transaction.update(userRef, { walletBalance: newBalance });
+            transaction.set(walletRef, { 
+                balance: newBalance, 
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp() 
+            }, { merge: true });
 
             // Record transaction
             const transRef = db.collection('wallet_transactions').doc();
@@ -2575,11 +2576,15 @@ async function finalizeWalletTopUp(amount) {
                 amount: amount,
                 type: 'credit',
                 method: 'stripe',
+                balance_after: newBalance,
                 date: new Date().toISOString(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 description: 'Wallet Top-up via Stripe'
             });
         });
 
+        // Update local state to show immediately
+        state.walletBalance += amount;
         showToast("Wallet Updated", `Success! LKR ${amount} added to your wallet. 💰`, "success");
         
         // Refresh profile if viewing it
