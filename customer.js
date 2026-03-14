@@ -2641,6 +2641,7 @@ async function handleLogout() {
         isDanger: false
     });
     if (confirmed) {
+        clearTracking(); // Stop listening and clear UI
         firebase.auth().signOut();
         state.user = null;
         localStorage.removeItem('ncafe_user');
@@ -2907,6 +2908,7 @@ firebase.auth().onAuthStateChanged((user) => {
             });
         });
     } else {
+        clearTracking(); // Ensure guest account starts clean
         state.user = null;
         state.walletBalance = 0;
         state.walletLoading = false;
